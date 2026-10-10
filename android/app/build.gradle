@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace 'com.irfanmpmk.rabbittor'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.irfanmpmk.rabbittor'
+        minSdk 26
+        targetSdk 34
+        versionCode runNumber
+        versionName "1.0.${runNumber}"
+    }
+
+    signingConfigs {
+        release {
+            // CI can override these with repository secrets (see .github/workflows/android.yml)
+            storeFile file(System.getenv("RT_KEYSTORE") ?: "../rabbittor.jks")
+            storePassword System.getenv("RT_STORE_PASS") ?: "rabbittor"
+            keyAlias System.getenv("RT_KEY_ALIAS") ?: "rabbittor"
+            keyPassword System.getenv("RT_KEY_PASS") ?: "rabbittor"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

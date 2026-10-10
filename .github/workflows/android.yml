@@ -1,0 +1,69 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Copy game into the app
+        run: python3 tools/prepare_android_assets.py
+
+      - name: Use private signing key if configured
+        env:
+          KEYSTORE_B64: ${{ secrets.RT_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.RT_STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.RT_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.RT_KEY_PASS }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "RT_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "RT_STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "RT_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "RT_KEY_PASS=$KEY_PASS" >> "$GITHUB_ENV"
+            echo "Using the key from repository secrets"
+          else
+            echo "Using the key in android/rabbittor.jks"
+          fi
+
+      - name: Build signed APK
+        run: gradle -p android assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/Rabbittor-1.0.${GITHUB_RUN_NUMBER}.apk"
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rabbittor-apk
+          path: out/*.apk
+
+      - name: Publish release with the APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v1.0.${{ github.run_number }}
+          name: Rabbittor 1.0.${{ github.run_number }}
+          body: |
+            Android build of Rabbittor. Download the APK below, open it on the phone and allow installing from this source.
+            Story, map and Big Mouth by Noonu.
+          files: out/*.apk

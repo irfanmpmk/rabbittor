@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rabbit head with a carrot, drawn on a 108x108 adaptive-icon canvas (safe zone is the middle 66). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- ears -->
+    <path android:fillColor="#F6F2EA"
+        android:pathData="M42,22 C36,22 35,36 38,52 L48,52 C49,36 48,22 42,22 Z" />
+    <path android:fillColor="#F6F2EA"
+        android:pathData="M66,22 C60,22 59,36 60,52 L70,52 C73,36 72,22 66,22 Z" />
+    <path android:fillColor="#F7A8BC"
+        android:pathData="M42,27 C39,27 39,38 41,50 L45,50 C46,38 45,27 42,27 Z" />
+    <path android:fillColor="#F7A8BC"
+        android:pathData="M66,27 C63,27 62,38 63,50 L67,50 C69,38 69,27 66,27 Z" />
+    <!-- head -->
+    <path android:fillColor="#F6F2EA"
+        android:pathData="M54,46 C68,46 78,55 78,67 C78,79 67,86 54,86 C41,86 30,79 30,67 C30,55 40,46 54,46 Z" />
+    <!-- eyes -->
+    <path android:fillColor="#1B1420"
+        android:pathData="M45,62 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+    <path android:fillColor="#1B1420"
+        android:pathData="M63,62 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+    <!-- nose -->
+    <path android:fillColor="#F7A8BC"
+        android:pathData="M54,70 m-3,0 a3,2.4 0 1,0 6,0 a3,2.4 0 1,0 -6,0" />
+    <!-- carrot -->
+    <path android:fillColor="#FF8A1F"
+        android:pathData="M70,80 L82,68 L86,72 L74,84 Z" />
+    <path android:fillColor="#6FDC6A"
+        android:pathData="M82,68 L86,61 L88,66 L93,64 L86,72 Z" />
+</vector>

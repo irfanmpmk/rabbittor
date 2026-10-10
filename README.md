@@ -2,7 +2,7 @@
 
 A maze chase game in the spirit of Pac-Man, with its own plot: you are a rabbit locked in a cage at the maze entrance. The cage opens, you eat every carrot in the maze, and the escape door in the centre unlocks. Big Mouth, a cruel enemy with a huge mouth, waits outside and comes in after you a few seconds later.
 
-The story, the map layout (cage at the left entrance, Big Mouth outside, the locked door in the middle vault, hearts on top) and the characters were invented by a young designer in the family. Put his name in `js/config.js` (`RT.CREDITS.storyBy`) and it shows on the title screen.
+The story, the map layout (cage at the left entrance, Big Mouth outside, the locked door in the middle vault, hearts on top) and the characters were invented by **Noonu**.
 
 ## Play
 
@@ -45,4 +45,5 @@ tools/build-single.mjs   bundles everything into dist/rabbittor.html
 
 - **GitHub Pages**: repository Settings → Pages → Deploy from branch → `main` / root. The game will be at `https://irfanmpmk.github.io/rabbittor/`.
 - **One file**: `node tools/build-single.mjs` writes `dist/rabbittor.html`, which you can send to anyone or open offline.
-- **Android**: wrap the folder with Capacitor or a WebView app the same way as any web game.
+- **Android APK**: every push to `main` runs `.github/workflows/android.yml`, which builds a signed APK (the game runs offline inside a full-screen WebView, fonts bundled) and attaches it to a new release under **Releases**. Locally: `python3 tools/prepare_android_assets.py` then `gradle -p android assembleRelease` with the Android SDK installed.
+  - The APK is signed with `android/rabbittor.jks` (password `rabbittor`) so updates install over each other. That key is public in this repo, which is fine for sharing with family. Before publishing on Google Play, create a private key and add it as repository secrets `RT_KEYSTORE_B64`, `RT_STORE_PASS`, `RT_KEY_ALIAS`, `RT_KEY_PASS`; the workflow uses them automatically.
