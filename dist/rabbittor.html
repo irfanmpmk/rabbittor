@@ -1,0 +1,2416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b1611">
+<meta name="description" content="Rabbittor — a rabbit maze chase game. Eat every carrot, open the escape door and don't get caught by Big Mouth.">
+<title>Rabbittor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%0A%20%20%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2313261b%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2225%22%20cy%3D%2216%22%20rx%3D%225%22%20ry%3D%2213%22%20fill%3D%22%23f6f2ea%22%20transform%3D%22rotate(-12%2025%2016)%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2239%22%20cy%3D%2216%22%20rx%3D%225%22%20ry%3D%2213%22%20fill%3D%22%23f6f2ea%22%20transform%3D%22rotate(12%2039%2016)%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2225%22%20cy%3D%2217%22%20rx%3D%222.4%22%20ry%3D%229%22%20fill%3D%22%23f7a8bc%22%20transform%3D%22rotate(-12%2025%2017)%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2239%22%20cy%3D%2217%22%20rx%3D%222.4%22%20ry%3D%229%22%20fill%3D%22%23f7a8bc%22%20transform%3D%22rotate(12%2039%2017)%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2232%22%20cy%3D%2240%22%20rx%3D%2217%22%20ry%3D%2215%22%20fill%3D%22%23f6f2ea%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2226%22%20cy%3D%2237%22%20r%3D%222.6%22%20fill%3D%22%231b1420%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2238%22%20cy%3D%2237%22%20r%3D%222.6%22%20fill%3D%22%231b1420%22%2F%3E%0A%20%20%3Cellipse%20cx%3D%2232%22%20cy%3D%2243%22%20rx%3D%222.4%22%20ry%3D%221.8%22%20fill%3D%22%23f7a8bc%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M46%2050l9-9%203%203-9%209z%22%20fill%3D%22%23ff8a1f%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M55%2041l4-5%201%203%203-1-4%205z%22%20fill%3D%22%236fdc6a%22%2F%3E%0A%3C%2Fsvg%3E%0A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap">
+<style>
+/* Rabbittor — night meadow arcade.
+   Layout: one-screen app — HUD on top, maze fills the middle, controls at the bottom;
+   screens float over the maze as panels. Deliberately one dark look. */
+:root {
+  --night: #0b1611;
+  --moss: #13261b;
+  --panel: #172e21;
+  --line: #2c4b37;
+  --cream: #f6f0dc;
+  --muted: #a9bfae;
+  --carrot: #ff8a1f;
+  --leaf: #6fdc6a;
+  --danger: #ff4d5e;
+  --sky: #7fd4ff;
+  --ember: #ff7b54;
+  --gold: #ffd23f;
+  --mouth: #d4418f;
+  --shadow: rgba(0, 0, 0, .45);
+  --font-display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--night);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-weight: 600;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+
+#app {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(111, 220, 106, .08), transparent 60%),
+    var(--night);
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  padding: 8px 16px 6px;
+  display: grid;
+  gap: 6px;
+  background: linear-gradient(var(--moss), rgba(19, 38, 27, .85));
+  border-bottom: 1px solid var(--line);
+}
+.hud-row { display: flex; align-items: center; gap: 12px; }
+.lives { display: flex; gap: 3px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.heart svg { width: 22px; height: 22px; display: block; fill: var(--danger); filter: drop-shadow(0 2px 0 rgba(0,0,0,.4)); }
+.heart.lost svg { fill: #3a2b30; filter: none; }
+.score-box { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.score-box .lbl, .final .lbl { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+#score { font-family: var(--font-display); font-size: 24px; color: var(--gold); text-shadow: 0 2px 0 var(--shadow); }
+.hud-right { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.chip {
+  font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+}
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); display: grid; place-items: center;
+}
+.icon-btn svg { width: 18px; height: 18px; fill: var(--cream); }
+
+.carrot-meter { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; }
+.carrot-ico { width: 18px; height: 18px; flex: none; }
+.track { flex: 1; height: 10px; border-radius: 999px; background: #0c1a12; border: 1px solid var(--line); overflow: hidden; }
+.fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff6a00, var(--carrot), #ffc06b); border-radius: 999px; transition: width .2s; }
+#carrotCount { color: var(--muted); min-width: 72px; text-align: right; }
+.door-tag { display: none; color: var(--night); background: var(--gold); padding: 2px 8px; border-radius: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.carrot-meter.open .door-tag { display: inline-block; animation: pulse 0.8s infinite alternate; }
+.carrot-meter.open .fill { background: linear-gradient(90deg, var(--gold), #fff3b0); }
+
+/* ---------- Stage ---------- */
+.stage { position: relative; overflow: hidden; min-height: 0; }
+#game { position: absolute; inset: 0; display: block; }
+
+.enemy-timer {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(11, 22, 17, .85); border: 1px solid var(--line);
+  padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap; pointer-events: none;
+}
+.enemy-timer b { font-family: var(--font-display); font-size: 18px; color: var(--mouth); min-width: 1.4em; text-align: center; }
+.enemy-timer.soon { border-color: var(--danger); animation: shake .25s infinite; }
+.enemy-timer.soon b { color: var(--danger); }
+.mouth-ico {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: conic-gradient(from 60deg, transparent 0 60deg, var(--mouth) 60deg 360deg);
+  transform: rotate(-30deg);
+}
+
+.banner {
+  position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
+  width: min(90%, 520px); text-align: center;
+  font-family: var(--font-display); font-size: clamp(18px, 4.4vw, 30px); line-height: 1.15;
+  padding: 12px 18px; border-radius: 14px; pointer-events: none;
+  background: rgba(11, 22, 17, .88); border: 2px solid var(--line);
+  text-wrap: balance; animation: pop .35s ease-out;
+}
+.banner.danger { color: #fff; background: rgba(120, 10, 40, .9); border-color: var(--danger); }
+.banner.good { color: var(--night); background: var(--gold); border-color: #fff3b0; }
+
+.countdown {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-family: var(--font-display); font-size: clamp(64px, 18vw, 140px); color: var(--cream);
+  text-shadow: 0 6px 0 var(--shadow), 0 0 40px rgba(255, 210, 63, .35);
+  opacity: 0;
+}
+.countdown.show { animation: count .9s ease-out forwards; }
+.countdown.go { color: var(--leaf); }
+
+.toast {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  background: var(--cream); color: var(--night); font-weight: 800; font-size: 14px;
+  padding: 8px 14px; border-radius: 10px; white-space: nowrap; max-width: 92%;
+  overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  box-shadow: 0 6px 20px var(--shadow); animation: rise .3s ease-out;
+}
+
+/* ---------- Controls ---------- */
+.controls {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--moss); border-top: 1px solid var(--line);
+}
+.dpad { display: none; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 40px); gap: 3px; }
+.dpad button {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 12px;
+  display: grid; place-items: center; touch-action: none;
+}
+.dpad button svg { width: 20px; height: 20px; fill: var(--cream); }
+.dpad button.pressed { background: var(--line); transform: scale(.94); }
+.d-up { grid-column: 2; grid-row: 1; }
+.d-left { grid-column: 1; grid-row: 2; }
+.d-right { grid-column: 3; grid-row: 2; }
+.d-down { grid-column: 2; grid-row: 3; }
+
+.skills { display: flex; gap: 10px; flex: 1; justify-content: center; }
+.skill {
+  --pct: 100%;
+  --c: var(--sky);
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px 8px 8px; border-radius: 16px; min-width: 150px;
+  background: var(--panel); border: 2px solid var(--line); touch-action: none;
+  transition: transform .1s, border-color .2s;
+}
+.skill.fighter { --c: var(--ember); }
+.skill:active { transform: scale(.96); }
+.skill-ico {
+  width: 46px; height: 46px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: conic-gradient(var(--c) var(--pct), #0c1a12 0);
+  position: relative;
+}
+.skill-ico::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--panel); }
+.skill-ico svg { position: relative; width: 24px; height: 24px; fill: var(--c); }
+.skill-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+.skill-name { font-family: var(--font-display); font-size: 17px; letter-spacing: .02em; }
+.skill-sub { font-size: 12px; color: var(--muted); font-weight: 800; font-variant-numeric: tabular-nums; }
+.skill.ready { border-color: var(--c); box-shadow: 0 0 18px -4px var(--c); }
+.skill.ready .skill-sub { color: var(--c); }
+.skill.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, var(--panel)); animation: glow .5s infinite alternate; }
+.skill.cooling .skill-ico svg { opacity: .45; }
+.skill kbd { margin-left: auto; }
+.badge {
+  position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 999px; background: var(--ember); color: var(--night); font-weight: 800; font-size: 13px;
+  display: grid; place-items: center; border: 2px solid var(--moss);
+}
+kbd {
+  font-family: var(--font-body); font-size: 11px; font-weight: 800; color: var(--muted);
+  border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 1px 6px; background: var(--moss);
+}
+
+@media (pointer: coarse) {
+  .dpad { display: grid; }
+  .skills { flex-direction: column; flex: none; gap: 8px; }
+  .skill { min-width: 0; padding: 6px 12px 6px 6px; }
+  .skill kbd { display: none; }
+  .skill-ico { width: 40px; height: 40px; }
+  .keys div:not(.touch-only) { display: none; }
+}
+@media (pointer: fine) { .touch-only { display: none; } }
+
+/* ---------- Screens ---------- */
+.screen {
+  position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
+  padding: 16px; overflow-y: auto;
+  background: rgba(6, 12, 9, .72);
+  backdrop-filter: blur(3px);
+  touch-action: pan-y;
+}
+#scrTitle { background: radial-gradient(ellipse at 50% 0%, #1b3a28, var(--night) 70%); }
+.panel {
+  width: min(100%, 720px); background: var(--panel); border: 2px solid var(--line);
+  border-radius: 24px; padding: 20px; display: grid; gap: 14px; justify-items: center;
+  box-shadow: 0 20px 60px var(--shadow); animation: pop .35s ease-out;
+}
+.small-panel { width: min(100%, 420px); }
+#titleArt { width: 100%; height: 92px; display: block; }
+.logo {
+  margin: -8px 0 0; font-family: var(--font-display); font-weight: 400;
+  font-size: clamp(48px, 13vw, 92px); line-height: .9; letter-spacing: .01em;
+  color: var(--cream); text-shadow: 0 5px 0 #0a140e, 0 10px 30px rgba(0, 0, 0, .5);
+  transform: rotate(-2deg);
+}
+.logo span { color: var(--carrot); }
+.tag { margin: 0; text-align: center; color: var(--muted); max-width: 46ch; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; text-align: center; text-wrap: balance; }
+h2.danger { color: var(--danger); }
+.sub { margin: -6px 0 0; color: var(--muted); text-align: center; }
+
+.modes { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.mode {
+  --c: var(--leaf);
+  display: grid; gap: 4px; justify-items: start; text-align: left;
+  padding: 12px; border-radius: 16px; background: var(--moss);
+  border: 2px solid var(--line); transition: transform .12s, border-color .12s;
+}
+.mode:hover, .mode:focus-visible { transform: translateY(-3px); border-color: var(--c); outline: none; }
+.mode-normal { --c: var(--sky); }
+.mode-hard { --c: var(--ember); }
+.mode-extreme { --c: var(--danger); }
+.mode-name { font-family: var(--font-display); font-size: 24px; color: var(--c); }
+.mode-hearts { display: flex; gap: 2px; }
+.mode-hearts svg { width: 16px; height: 16px; fill: var(--danger); display: block; }
+.mode-info { font-size: 12px; font-weight: 800; color: var(--cream); }
+.mode-blurb { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.mode-best { font-size: 11px; color: var(--gold); font-weight: 800; letter-spacing: .04em; margin-top: 2px; }
+
+.title-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ghost-btn {
+  padding: 9px 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--moss); font-weight: 800; font-size: 14px;
+}
+.ghost-btn b { color: var(--leaf); }
+.ghost-btn[aria-pressed="false"] b { color: var(--danger); }
+.big-btn {
+  width: 100%; padding: 14px; border-radius: 16px; border: none;
+  background: linear-gradient(#ffa34a, var(--carrot)); color: #2b1300;
+  font-family: var(--font-display); font-size: 22px; letter-spacing: .02em;
+  box-shadow: 0 5px 0 #a8500b;
+}
+.big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #a8500b; }
+.credit { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+
+.rows { width: 100%; display: grid; gap: 6px; }
+.rows div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 8px; background: var(--moss); font-variant-numeric: tabular-nums; }
+.rows div span { color: var(--muted); }
+.rows .total { background: transparent; border-top: 1px dashed var(--line); border-radius: 0; }
+.rows .total b { color: var(--gold); font-size: 18px; }
+.final { margin: 0; display: grid; justify-items: center; }
+#goScore { font-family: var(--font-display); font-size: 52px; color: var(--gold); line-height: 1; }
+.new-best { margin: 0; color: var(--night); background: var(--gold); padding: 4px 12px; border-radius: 8px; font-weight: 800; animation: pulse .6s infinite alternate; }
+
+.help-panel { justify-items: stretch; }
+.rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rules li { display: flex; gap: 12px; align-items: flex-start; line-height: 1.35; font-size: 14px; color: var(--muted); }
+.rules li > div { min-width: 0; }
+.rules b { display: block; color: var(--cream); font-size: 15px; }
+.r-ico { width: 30px; height: 30px; border-radius: 9px; flex: none; margin-top: 2px; }
+.r-cage { background: repeating-linear-gradient(90deg, #c9d3dc 0 3px, transparent 3px 7px), #2a3a33; }
+.r-carrot { background: linear-gradient(135deg, #ffb35c, #d9600a); clip-path: polygon(20% 10%, 95% 30%, 15% 95%); }
+.r-door { background: linear-gradient(#8b5a2b, #5b3a1f); border-radius: 14px 14px 4px 4px; box-shadow: inset 0 0 0 3px var(--gold); }
+.r-mouth { background: conic-gradient(from 60deg, transparent 0 60deg, var(--mouth) 60deg 360deg); border-radius: 50%; transform: rotate(-30deg); }
+.r-invis { background: var(--sky); opacity: .7; border-radius: 15px 15px 4px 4px; }
+.r-fighter { background: var(--ember); border-radius: 50%; box-shadow: inset -6px 0 0 #c4381c; }
+.r-gold { background: linear-gradient(135deg, #fff1a6, #e6a800); clip-path: polygon(20% 10%, 95% 30%, 15% 95%); }
+.keys { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); justify-content: center; }
+
+@media (max-width: 680px) {
+  .modes { grid-template-columns: repeat(2, 1fr); }
+  .mode-blurb { display: none; }
+  .panel { padding: 16px; gap: 12px; border-radius: 20px; }
+  #titleArt { height: 72px; }
+  .hud { padding: 6px 12px 6px; }
+  .controls { padding-left: 12px; padding-right: 12px; }
+  .chip { display: none; }
+}
+@media (max-height: 520px) and (pointer: coarse) {
+  /* phone held sideways: put the controls beside the maze */
+  #app { grid-template-columns: auto 1fr auto; grid-template-rows: auto 1fr; }
+  .hud { grid-column: 1 / -1; }
+  .controls { display: contents; }
+  .dpad { grid-row: 2; grid-column: 1; align-self: center; margin: 0 8px; }
+  .stage { grid-row: 2; grid-column: 2; }
+  .skills { grid-row: 2; grid-column: 3; align-self: center; margin: 0 8px; }
+}
+
+/* ---------- Motion ---------- */
+@keyframes pop { from { transform: translateX(var(--tx, 0)) scale(.85); opacity: 0; } to { transform: translateX(var(--tx, 0)) scale(1); opacity: 1; } }
+.banner { --tx: -50%; }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes count { 0% { opacity: 0; transform: scale(1.8); } 25% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(.9); } }
+@keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+@keyframes glow { from { box-shadow: 0 0 8px -2px var(--c); } to { box-shadow: 0 0 22px 0 var(--c); } }
+@keyframes shake { 0%, 100% { transform: translateX(-50%) rotate(0); } 50% { transform: translateX(-50%) rotate(-2deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+  .countdown.show { opacity: 1; }
+}
+</style>
+</head>
+<body>
+<!--APP-START-->
+<div id="app">
+  <header class="hud" id="hud" hidden>
+    <div class="hud-row">
+      <div class="lives" id="lives" aria-label="Lives"></div>
+      <div class="score-box"><span class="lbl">Score</span><span id="score" class="num">0</span></div>
+      <div class="hud-right">
+        <span class="chip" id="levelChip">Lv 1</span>
+        <button class="icon-btn" id="btnPause" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="carrot-meter" id="carrotMeter">
+      <svg class="carrot-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="#6fdc6a" d="M14 3l1.5 4L19 5l-2 3.6 4 .9-4.6 1.4z"/><path fill="#ff8a1f" d="M15.4 8.6a3 3 0 0 0-4.3 0L3.3 20a.5.5 0 0 0 .7.7l11.4-7.8a3 3 0 0 0 0-4.3z"/></svg>
+      <div class="track"><div class="fill" id="carrotFill"></div></div>
+      <span id="carrotCount" class="num">0 / 0</span>
+      <span class="door-tag">Door open!</span>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="game" aria-label="Maze"></canvas>
+    <div class="enemy-timer" id="enemyTimer" hidden>
+      <span class="mouth-ico" aria-hidden="true"></span> Big Mouth arrives in <b id="enemyTimerNum">10</b>
+    </div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="countdown" id="countdown"></div>
+    <div class="toast" id="toast" hidden></div>
+  </main>
+
+  <footer class="controls" id="controls" hidden>
+    <div class="dpad" aria-label="Direction pad">
+      <button data-dir="up" class="d-up" aria-label="Up"><svg viewBox="0 0 24 24"><path d="M12 6l7 9H5z"/></svg></button>
+      <button data-dir="left" class="d-left" aria-label="Left"><svg viewBox="0 0 24 24"><path d="M6 12l9-7v14z"/></svg></button>
+      <button data-dir="right" class="d-right" aria-label="Right"><svg viewBox="0 0 24 24"><path d="M18 12l-9 7V5z"/></svg></button>
+      <button data-dir="down" class="d-down" aria-label="Down"><svg viewBox="0 0 24 24"><path d="M12 18l-7-9h14z"/></svg></button>
+    </div>
+    <div class="skills">
+      <button class="skill invis" id="btnInvis" aria-label="Use invisibility">
+        <span class="skill-ico">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7.5 7.5 0 0 0-7.5 7.5v11.2l2.6-1.8 2.4 1.8 2.5-1.8 2.5 1.8 2.4-1.8 2.6 1.8V10A7.5 7.5 0 0 0 12 2.5z"/><circle cx="9.2" cy="10" r="1.6" fill="var(--panel)"/><circle cx="14.8" cy="10" r="1.6" fill="var(--panel)"/></svg>
+        </span>
+        <span class="skill-text"><span class="skill-name">Invisible</span><span class="skill-sub" id="invisSub">Ready</span></span>
+        <kbd>Space</kbd>
+      </button>
+      <button class="skill fighter" id="btnFighter" aria-label="Use fighter">
+        <span class="skill-ico">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h7a6 6 0 0 1 6 6v3a5 5 0 0 1-5 5H9.5L6 14.5V12a3 3 0 0 1-2-2.8V7a3 3 0 0 1 3-3z"/><rect x="8" y="18.5" width="9" height="3" rx="1"/></svg>
+        </span>
+        <span class="skill-text"><span class="skill-name">Fighter</span><span class="skill-sub" id="fighterSub">0/30</span></span>
+        <span class="badge" id="fighterBadge" hidden>0</span>
+        <kbd>F</kbd>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Title -->
+  <section class="screen" id="scrTitle" hidden>
+    <div class="panel title-panel">
+      <canvas id="titleArt" aria-hidden="true"></canvas>
+      <h1 class="logo">Rabbit<span>tor</span></h1>
+      <p class="tag">Escape the cage, eat every carrot and reach the secret door before Big Mouth eats you.</p>
+      <div class="modes" id="modes"></div>
+      <div class="title-row">
+        <button class="ghost-btn" id="btnHelp">How to play</button>
+        <button class="ghost-btn" data-toggle="sfx">Sound <b>On</b></button>
+        <button class="ghost-btn" data-toggle="music">Music <b>On</b></button>
+      </div>
+      <p class="credit" id="credit"></p>
+    </div>
+  </section>
+
+  <!-- Help -->
+  <section class="screen" id="scrHelp" hidden>
+    <div class="panel help-panel">
+      <h2>How to play</h2>
+      <ul class="rules">
+        <li><span class="r-ico r-cage"></span><div><b>The cage opens</b>You start locked in a cage at the maze entrance. After the countdown the cage opens and you can run.</div></li>
+        <li><span class="r-ico r-carrot"></span><div><b>Eat every carrot</b>10 points each. Munch fast for streak bonuses.</div></li>
+        <li><span class="r-ico r-door"></span><div><b>Find the escape door</b>The door in the middle of the maze stays locked until every carrot is gone. Run into it to escape.</div></li>
+        <li><span class="r-ico r-mouth"></span><div><b>Big Mouth</b>He waits outside and comes in 10 or more seconds after you start. If he touches you, you lose a life.</div></li>
+        <li><span class="r-ico r-invis"></span><div><b>Invisible</b>Big Mouth can't see you or catch you for a few seconds. Then it needs 2 minutes to recharge.</div></li>
+        <li><span class="r-ico r-fighter"></span><div><b>Fighter</b>Every 30 carrots gives one charge. Use it, then touch Big Mouth to punch him all the way to the far side of the maze.</div></li>
+        <li><span class="r-ico r-gold"></span><div><b>Golden carrot</b>Appears sometimes for 10 seconds. Big points and 5 extra fighter carrots.</div></li>
+      </ul>
+      <div class="keys">
+        <div><kbd>Arrows</kbd> or <kbd>WASD</kbd> move</div>
+        <div><kbd>Space</kbd> invisible</div>
+        <div><kbd>F</kbd> fighter</div>
+        <div><kbd>P</kbd> pause</div>
+        <div class="touch-only">On a phone: swipe on the maze or use the arrow pad</div>
+      </div>
+      <button class="big-btn" id="btnHelpBack" data-autofocus>Got it</button>
+    </div>
+  </section>
+
+  <!-- Pause -->
+  <section class="screen" id="scrPause" hidden>
+    <div class="panel small-panel">
+      <h2>Paused</h2>
+      <button class="big-btn" id="btnResume" data-autofocus>Resume</button>
+      <div class="title-row">
+        <button class="ghost-btn" data-toggle="sfx">Sound <b>On</b></button>
+        <button class="ghost-btn" data-toggle="music">Music <b>On</b></button>
+      </div>
+      <div class="title-row">
+        <button class="ghost-btn" id="btnRestart">Restart</button>
+        <button class="ghost-btn" id="btnQuit">Main menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Level clear -->
+  <section class="screen" id="scrLevel" hidden>
+    <div class="panel small-panel">
+      <h2 id="lcTitle">Escaped!</h2>
+      <p class="sub">The rabbit got away. Big Mouth is hungrier now.</p>
+      <div class="rows" id="lcRows"></div>
+      <p class="new-best" id="lcBest" hidden>New best score!</p>
+      <button class="big-btn" id="btnNext" data-autofocus>Next maze</button>
+      <button class="ghost-btn" id="btnLcMenu">Main menu</button>
+    </div>
+  </section>
+
+  <!-- Game over -->
+  <section class="screen" id="scrOver" hidden>
+    <div class="panel small-panel">
+      <h2 class="danger">Big Mouth got you!</h2>
+      <p class="final"><span class="lbl">Final score</span><span id="goScore" class="num">0</span></p>
+      <p class="new-best" id="goBest" hidden>New best score!</p>
+      <div class="rows" id="goStats"></div>
+      <button class="big-btn" id="btnAgain" data-autofocus>Play again</button>
+      <button class="ghost-btn" id="btnGoMenu">Main menu</button>
+    </div>
+  </section>
+</div>
+<!--APP-END-->
+<script>
+/* Rabbittor — game configuration.
+   Tweak numbers here to balance the game. */
+var RT = window.RT = window.RT || {};
+
+// Put the young designer's name here so it shows on the title screen.
+RT.CREDITS = {
+  storyBy: 'our little game designer'
+};
+
+RT.RABBIT_SPEED = 5.6;        // tiles per second
+RT.INVIS_COOLDOWN = 120;      // seconds before invisibility can be used again
+RT.FIGHTER_COST = 30;         // carrots needed for one fighter charge
+RT.FIGHTER_MAX = 3;           // max stored fighter charges
+RT.GOLDEN_POINTS = 150;
+RT.BOUNCE_POINTS = 300;
+RT.CARROT_POINTS = 10;
+
+/* land = [width, height] used on wide screens, port = used on tall phone screens.
+   Width must be odd. Height must be 4k+3 (15, 19, 23, 27, 31, 35, 39 ...). */
+RT.DIFFICULTIES = {
+  easy: {
+    key: 'easy', name: 'Easy', lives: 5,
+    land: [21, 15], port: [15, 23],
+    enemyDelay: 15, respawnDelay: 8,
+    enemySpeed: 0.70, wander: 0.25,
+    invisDur: 8, fighterDur: 10,
+    braid: 1.0, loops: 0.10, mult: 1,
+    mapLabel: 'Small map', blurb: 'Big Mouth is slow and gets confused.'
+  },
+  normal: {
+    key: 'normal', name: 'Normal', lives: 3,
+    land: [25, 19], port: [17, 27],
+    enemyDelay: 12, respawnDelay: 6,
+    enemySpeed: 0.80, wander: 0.12,
+    invisDur: 6, fighterDur: 8,
+    braid: 1.0, loops: 0.07, mult: 1.5,
+    mapLabel: 'Medium map', blurb: 'A fair chase. Watch the corners.'
+  },
+  hard: {
+    key: 'hard', name: 'Hard', lives: 2,
+    land: [29, 23], port: [17, 31],
+    enemyDelay: 10, respawnDelay: 5,
+    enemySpeed: 0.90, wander: 0.05,
+    invisDur: 5, fighterDur: 7,
+    braid: 0.9, loops: 0.05, mult: 2,
+    mapLabel: 'Large map', blurb: 'Fast hunter, some dead ends.'
+  },
+  extreme: {
+    key: 'extreme', name: 'Extreme', lives: 1,
+    land: [37, 27], port: [21, 39],
+    enemyDelay: 10, respawnDelay: 5,
+    enemySpeed: 0.97, wander: 0,
+    invisDur: 4, fighterDur: 6,
+    braid: 0.8, loops: 0.04, mult: 3,
+    mapLabel: 'Huge map', blurb: 'One life. Big Mouth never gives up.'
+  }
+};
+RT.DIFF_ORDER = ['easy', 'normal', 'hard', 'extreme'];
+</script>
+<script>
+/* Rabbittor — maze generation.
+   Layout follows the original drawing: Big Mouth's lair and the rabbit cage
+   sit at the left entrance, the escape door is locked in the centre vault. */
+(function () {
+  const RT = window.RT;
+
+  const T = RT.T = { PATH: 0, WALL: 1, VOID: 2, LAIR: 3, GATE: 4, DOOR: 5 };
+
+  const DIR = RT.DIR = {
+    up: { x: 0, y: -1, name: 'up' },
+    down: { x: 0, y: 1, name: 'down' },
+    left: { x: -1, y: 0, name: 'left' },
+    right: { x: 1, y: 0, name: 'right' }
+  };
+  RT.DIR_LIST = [DIR.up, DIR.right, DIR.down, DIR.left];
+  RT.opposite = function (d) {
+    if (!d) return null;
+    if (d === DIR.up) return DIR.down;
+    if (d === DIR.down) return DIR.up;
+    if (d === DIR.left) return DIR.right;
+    return DIR.left;
+  };
+
+  // Small seeded random generator (mulberry32)
+  RT.rng = function (seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  /* Build a level.
+     mw, mh : maze size (mw odd, mh = 4k+3 so the entrance row is a corridor)
+     braid  : chance of removing each dead end (1 = no dead ends)
+     loops  : chance of opening extra shortcuts between parallel corridors */
+  RT.generateLevel = function (mw, mh, braid, loops, seed) {
+    const rand = RT.rng(seed);
+    const m = [];
+    for (let y = 0; y < mh; y++) m.push(new Array(mw).fill(1));
+    const inner = (x, y) => x > 0 && y > 0 && x < mw - 1 && y < mh - 1;
+    const K = (x, y) => y * mw + x;
+
+    // 1. Perfect maze with a recursive backtracker
+    const stack = [[1, 1]];
+    m[1][1] = 0;
+    const steps = [[2, 0], [-2, 0], [0, 2], [0, -2]];
+    while (stack.length) {
+      const [cx, cy] = stack[stack.length - 1];
+      const opts = steps.filter(([dx, dy]) => {
+        const nx = cx + dx, ny = cy + dy;
+        return inner(nx, ny) && m[ny][nx] === 1;
+      });
+      if (!opts.length) { stack.pop(); continue; }
+      const [dx, dy] = opts[Math.floor(rand() * opts.length)];
+      m[cy + dy / 2][cx + dx / 2] = 0;
+      m[cy + dy][cx + dx] = 0;
+      stack.push([cx + dx, cy + dy]);
+    }
+
+    const midY = (mh - 1) / 2;
+    const cx = (mw - 1) / 2, cy = midY;
+    const soft = new Set();  // braid / shortcuts may not open these
+    const hard = new Set();  // nothing may open these
+
+    // 2. Centre vault: a ring corridor around a walled room holding the door
+    for (let y = cy - 3; y <= cy + 3; y++) {
+      for (let x = cx - 3; x <= cx + 3; x++) {
+        const ring = Math.max(Math.abs(x - cx), Math.abs(y - cy));
+        if (ring === 3) { m[y][x] = 1; soft.add(K(x, y)); }
+        else if (ring === 2) { m[y][x] = 0; soft.add(K(x, y)); }
+        else { m[y][x] = 1; hard.add(K(x, y)); }
+      }
+    }
+    m[cy][cx] = 5;          // door
+    m[cy + 1][cx] = 0;      // entry below the door
+    // four exits from the ring, carved outward until they meet the maze
+    [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dy]) => {
+      let x = cx + dx * 3, y = cy + dy * 3;
+      m[y][x] = 0;
+      x += dx; y += dy;
+      while (inner(x, y) && m[y][x] !== 0) { m[y][x] = 0; x += dx; y += dy; }
+    });
+
+    // 3. Cage entrance on the left border
+    m[midY][0] = 0; hard.add(K(0, midY));
+    m[midY][1] = 0;
+
+    const isOpen = (x, y) => x >= 0 && y >= 0 && x < mw && y < mh && m[y][x] !== 1;
+    const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+    // 4. Remove dead ends (braiding) so the rabbit has escape loops
+    for (let y = 1; y < mh - 1; y++) {
+      for (let x = 1; x < mw - 1; x++) {
+        if (m[y][x] !== 0) continue;
+        const walls = D4.filter(([dx, dy]) => !isOpen(x + dx, y + dy));
+        if (walls.length < 3 || rand() >= braid) continue;
+        let cands = walls.filter(([dx, dy]) => {
+          const wx = x + dx, wy = y + dy;
+          return inner(wx, wy) && !soft.has(K(wx, wy)) && !hard.has(K(wx, wy)) && isOpen(x + 2 * dx, y + 2 * dy);
+        });
+        if (!cands.length) {
+          cands = walls.filter(([dx, dy]) => {
+            const wx = x + dx, wy = y + dy;
+            return inner(wx, wy) && !soft.has(K(wx, wy)) && !hard.has(K(wx, wy));
+          });
+        }
+        if (!cands.length) continue;
+        const [dx, dy] = cands[Math.floor(rand() * cands.length)];
+        m[y + dy][x + dx] = 0;
+      }
+    }
+
+    // 5. Extra shortcuts between parallel corridors
+    for (let y = 1; y < mh - 1; y++) {
+      for (let x = 1; x < mw - 1; x++) {
+        if (m[y][x] !== 1 || soft.has(K(x, y)) || hard.has(K(x, y))) continue;
+        const h = isOpen(x - 1, y) && isOpen(x + 1, y) && !isOpen(x, y - 1) && !isOpen(x, y + 1);
+        const v = isOpen(x, y - 1) && isOpen(x, y + 1) && !isOpen(x - 1, y) && !isOpen(x + 1, y);
+        if ((h || v) && rand() < loops) m[y][x] = 0;
+      }
+    }
+
+    // 6. Make sure every open tile is reachable from the cage
+    const reach = () => {
+      const seen = new Uint8Array(mw * mh);
+      const q = [K(0, midY)];
+      seen[q[0]] = 1;
+      while (q.length) {
+        const k = q.pop();
+        const x = k % mw, y = (k / mw) | 0;
+        for (const [dx, dy] of D4) {
+          const nx = x + dx, ny = y + dy;
+          if (isOpen(nx, ny) && !seen[K(nx, ny)]) { seen[K(nx, ny)] = 1; q.push(K(nx, ny)); }
+        }
+      }
+      return seen;
+    };
+    for (let guard = 0; guard < 400; guard++) {
+      const seen = reach();
+      let fixed = false, missing = false;
+      for (let y = 1; y < mh - 1 && !fixed; y++) {
+        for (let x = 1; x < mw - 1 && !fixed; x++) {
+          if (m[y][x] !== 0 || seen[K(x, y)]) continue;
+          missing = true;
+          for (const [dx, dy] of D4) {
+            const wx = x + dx, wy = y + dy;
+            if (!inner(wx, wy) || hard.has(K(wx, wy)) || m[wy][wx] !== 1) continue;
+            if (isOpen(wx + dx, wy + dy) && seen[K(wx + dx, wy + dy)]) {
+              m[wy][wx] = 0; fixed = true; break;
+            }
+          }
+        }
+      }
+      if (!missing) break;
+      if (!fixed) {
+        // fall back: open any wall touching both regions
+        for (let y = 1; y < mh - 1 && !fixed; y++) {
+          for (let x = 1; x < mw - 1 && !fixed; x++) {
+            if (m[y][x] !== 1 || hard.has(K(x, y))) continue;
+            let a = false, b = false;
+            for (const [dx, dy] of D4) {
+              const nx = x + dx, ny = y + dy;
+              if (!isOpen(nx, ny)) continue;
+              if (seen[K(nx, ny)]) a = true; else b = true;
+            }
+            if (a && b) { m[y][x] = 0; fixed = true; }
+          }
+        }
+        if (!fixed) break;
+      }
+    }
+
+    // 7. Build the full grid with two outside columns for lair + gate
+    const OX = 2;
+    const W = mw + OX, H = mh;
+    const grid = new Uint8Array(W * H).fill(T.VOID);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < mw; x++) {
+        const v = m[y][x];
+        grid[y * W + x + OX] = v === 1 ? T.WALL : v === 5 ? T.DOOR : T.PATH;
+      }
+    }
+    grid[midY * W + 0] = T.LAIR;
+    grid[midY * W + 1] = T.GATE;
+
+    const level = {
+      W, H, OX, grid, seed,
+      cage: { x: OX, y: midY },
+      lair: { x: 0, y: midY },
+      gate: { x: 1, y: midY },
+      door: { x: OX + cx, y: cy },
+      carrots: new Set()
+    };
+    level.key = (x, y) => y * W + x;
+    level.at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? T.VOID : grid[y * W + x];
+
+    for (let y = 0; y < H; y++) {
+      for (let x = OX; x < W; x++) {
+        if (grid[y * W + x] !== T.PATH) continue;
+        if (x === level.cage.x && y === level.cage.y) continue;
+        level.carrots.add(y * W + x);
+      }
+    }
+    return level;
+  };
+
+  // Breadth-first distances from (sx, sy). passable(x, y) -> bool
+  RT.bfs = function (level, sx, sy, passable) {
+    const { W, H } = level;
+    const dist = new Int32Array(W * H).fill(-1);
+    const q = new Int32Array(W * H);
+    let head = 0, tail = 0;
+    dist[sy * W + sx] = 0;
+    q[tail++] = sy * W + sx;
+    while (head < tail) {
+      const k = q[head++];
+      const x = k % W, y = (k / W) | 0;
+      const d = dist[k] + 1;
+      if (x + 1 < W && dist[k + 1] < 0 && passable(x + 1, y)) { dist[k + 1] = d; q[tail++] = k + 1; }
+      if (x > 0 && dist[k - 1] < 0 && passable(x - 1, y)) { dist[k - 1] = d; q[tail++] = k - 1; }
+      if (y + 1 < H && dist[k + W] < 0 && passable(x, y + 1)) { dist[k + W] = d; q[tail++] = k + W; }
+      if (y > 0 && dist[k - W] < 0 && passable(x, y - 1)) { dist[k - W] = d; q[tail++] = k - W; }
+    }
+    return dist;
+  };
+})();
+</script>
+<script>
+/* Rabbittor — synthesized sound effects and music (no audio files needed). */
+(function () {
+  const RT = window.RT;
+
+  class Sound {
+    constructor() {
+      this.ctx = null;
+      this.master = null;
+      this.sfxOn = load('rt_sfx', true);
+      this.musicOn = load('rt_music', true);
+      this.munchFlip = false;
+      this.musicTimer = null;
+      this.musicStep = 0;
+      this.musicTempo = 1;
+    }
+
+    unlock() {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.5;
+        this.master.connect(this.ctx.destination);
+      }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+
+    tone(freq, dur, opts = {}) {
+      if (!this.ctx || (!this.sfxOn && !opts.music)) return;
+      const t0 = this.ctx.currentTime + (opts.delay || 0);
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = opts.type || 'square';
+      osc.frequency.setValueAtTime(freq, t0);
+      if (opts.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.slide), t0 + dur);
+      const vol = opts.vol == null ? 0.15 : opts.vol;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(this.master);
+      osc.start(t0); osc.stop(t0 + dur + 0.02);
+    }
+
+    noise(dur, vol = 0.2, delay = 0, hp = 800) {
+      if (!this.ctx || !this.sfxOn) return;
+      const t0 = this.ctx.currentTime + delay;
+      const len = Math.floor(this.ctx.sampleRate * dur);
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.value = hp;
+      const g = this.ctx.createGain();
+      g.gain.value = vol;
+      src.connect(f); f.connect(g); g.connect(this.master);
+      src.start(t0);
+    }
+
+    munch() {
+      this.munchFlip = !this.munchFlip;
+      this.tone(this.munchFlip ? 620 : 520, 0.06, { type: 'square', vol: 0.06, slide: this.munchFlip ? 760 : 430 });
+    }
+    golden() { [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.12, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); }
+    charge() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.14, { type: 'square', vol: 0.08, delay: i * 0.07 })); }
+    invis() { this.tone(300, 0.5, { type: 'sine', vol: 0.18, slide: 1400 }); this.tone(450, 0.5, { type: 'triangle', vol: 0.06, slide: 1800, delay: 0.05 }); }
+    invisEnd() { this.tone(1200, 0.35, { type: 'sine', vol: 0.12, slide: 300 }); }
+    fighter() { this.tone(110, 0.25, { type: 'sawtooth', vol: 0.18, slide: 220 }); this.noise(0.15, 0.15); this.tone(440, 0.2, { type: 'square', vol: 0.08, delay: 0.12, slide: 880 }); }
+    bounce() { this.tone(180, 0.45, { type: 'sine', vol: 0.3, slide: 900 }); this.noise(0.2, 0.25, 0, 400); }
+    deny() { this.tone(160, 0.15, { type: 'square', vol: 0.08 }); this.tone(120, 0.18, { type: 'square', vol: 0.08, delay: 0.09 }); }
+    caught() {
+      this.tone(520, 0.9, { type: 'sawtooth', vol: 0.16, slide: 60 });
+      this.noise(0.3, 0.2, 0.05, 200);
+    }
+    growl() { this.tone(70, 0.9, { type: 'sawtooth', vol: 0.18, slide: 55 }); this.tone(74, 0.9, { type: 'sawtooth', vol: 0.12, slide: 50 }); }
+    arrive() {
+      this.tone(90, 0.6, { type: 'sawtooth', vol: 0.22, slide: 180 });
+      this.tone(60, 1.0, { type: 'square', vol: 0.1, delay: 0.1, slide: 45 });
+      this.noise(0.4, 0.15, 0, 300);
+    }
+    tick() { this.tone(880, 0.08, { type: 'square', vol: 0.08 }); }
+    go() { this.tone(1320, 0.25, { type: 'square', vol: 0.1 }); this.noise(0.2, 0.08, 0, 3000); }
+    door() { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.25, { type: 'triangle', vol: 0.14, delay: i * 0.09 })); }
+    win() { [659, 784, 988, 1319, 988, 1319, 1568].forEach((f, i) => this.tone(f, 0.22, { type: 'square', vol: 0.09, delay: i * 0.1 })); }
+    lose() { [392, 349, 311, 262, 196].forEach((f, i) => this.tone(f, 0.35, { type: 'triangle', vol: 0.14, delay: i * 0.18 })); }
+    heart(intensity) { this.tone(65, 0.12, { type: 'sine', vol: 0.18 * intensity }); this.tone(55, 0.12, { type: 'sine', vol: 0.14 * intensity, delay: 0.14 }); }
+    click() { this.tone(700, 0.04, { type: 'square', vol: 0.05 }); }
+
+    // Tiny looping chiptune
+    startMusic() {
+      this.stopMusic();
+      if (!this.ctx || !this.musicOn) return;
+      const bass = [131, 0, 131, 165, 175, 0, 175, 165, 147, 0, 147, 175, 196, 0, 196, 175];
+      const lead = [523, 0, 659, 0, 784, 659, 0, 523, 587, 0, 698, 0, 784, 0, 659, 0];
+      const loop = () => {
+        const i = this.musicStep++ % 16;
+        const bar = Math.floor(this.musicStep / 16) % 4;
+        if (bass[i]) this.tone(bass[i] * (bar === 2 ? 1.122 : 1), 0.16, { type: 'triangle', vol: 0.07, music: true });
+        if (lead[i] && bar % 2 === 1) this.tone(lead[i], 0.1, { type: 'square', vol: 0.025, music: true });
+        if (i % 4 === 0) this.noiseHat();
+        this.musicTimer = setTimeout(loop, 150 / this.musicTempo);
+      };
+      loop();
+    }
+    noiseHat() {
+      if (!this.ctx || !this.musicOn) return;
+      const was = this.sfxOn; this.sfxOn = true;
+      this.noise(0.03, 0.025, 0, 6000);
+      this.sfxOn = was;
+    }
+    stopMusic() { if (this.musicTimer) clearTimeout(this.musicTimer); this.musicTimer = null; }
+
+    setSfx(on) { this.sfxOn = on; save('rt_sfx', on); }
+    setMusic(on) { this.musicOn = on; save('rt_music', on); }
+  }
+
+  function load(k, def) {
+    try { const v = localStorage.getItem(k); return v == null ? def : v === '1'; } catch (e) { return def; }
+  }
+  function save(k, v) {
+    try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+  }
+
+  RT.Sound = Sound;
+})();
+</script>
+<script>
+/* Rabbittor — canvas renderer: meadow maze, hedges, rabbit, Big Mouth. */
+(function () {
+  const RT = window.RT;
+  const T = RT.T;
+
+  const C = {
+    void: '#0b1611',
+    ground: '#1f3528',
+    ground2: '#1c3125',
+    tuft: '#2c4a36',
+    hedgeEdge: '#0e2618',
+    hedge: '#2f7445',
+    hedgeTop: '#3f9157',
+    leaf: '#5bb874',
+    dirt: '#3a2a1c',
+    carrot: '#ff8a1f',
+    carrotDark: '#d9600a',
+    leafGreen: '#6fdc6a',
+    gold: '#ffd23f'
+  };
+  RT.COLORS = C;
+
+  function rr(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function ellipse(ctx, x, y, rx, ry, rot) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot || 0, 0, Math.PI * 2);
+  }
+
+  class Renderer {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.level = null;
+      this.ts = 24;
+      this.dpr = 1;
+      this.vw = 300; this.vh = 300;
+      this.cam = { x: 0, y: 0, init: false };
+      this.shake = 0;
+      this.staticLayer = null;
+      this.sprites = {};
+    }
+
+    setLevel(level) {
+      this.level = level;
+      this.cam.init = false;
+      this.resize();
+    }
+
+    resize() {
+      const parent = this.canvas.parentElement;
+      const rect = parent.getBoundingClientRect();
+      this.vw = Math.max(100, Math.floor(rect.width));
+      this.vh = Math.max(100, Math.floor(rect.height));
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.canvas.width = Math.floor(this.vw * this.dpr);
+      this.canvas.height = Math.floor(this.vh * this.dpr);
+      this.canvas.style.width = this.vw + 'px';
+      this.canvas.style.height = this.vh + 'px';
+      if (!this.level) return;
+      const L = this.level;
+      const fit = Math.floor(Math.min(this.vw / L.W, this.vh / L.H));
+      const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      const minTs = touch ? 20 : 18;
+      this.ts = Math.min(48, Math.max(fit, minTs));
+      this.buildStatic();
+      this.buildSprites();
+      this.cam.init = false;
+    }
+
+    buildSprites() {
+      const ts = this.ts, d = this.dpr;
+      const make = (golden) => {
+        const c = document.createElement('canvas');
+        c.width = c.height = Math.ceil(ts * d);
+        const g = c.getContext('2d');
+        g.scale(d, d);
+        g.translate(ts / 2, ts / 2);
+        g.rotate(-0.6);
+        const len = ts * (golden ? 0.46 : 0.36), w = ts * (golden ? 0.13 : 0.1);
+        // leaves
+        g.fillStyle = golden ? '#9be36b' : C.leafGreen;
+        for (let i = -1; i <= 1; i++) {
+          ellipse(g, i * w * 0.5, -len * 0.55, w * 0.32, w * 0.9, i * 0.5);
+          g.fill();
+        }
+        // body
+        const grd = g.createLinearGradient(-w, 0, w, 0);
+        grd.addColorStop(0, golden ? '#fff1a6' : '#ffb35c');
+        grd.addColorStop(1, golden ? '#e6a800' : C.carrotDark);
+        g.fillStyle = grd;
+        g.beginPath();
+        g.moveTo(-w, -len * 0.38);
+        g.quadraticCurveTo(0, -len * 0.55, w, -len * 0.38);
+        g.lineTo(0, len * 0.55);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = golden ? 'rgba(140,90,0,.6)' : 'rgba(120,40,0,.5)';
+        g.lineWidth = Math.max(1, ts * 0.03);
+        for (let i = 0; i < 2; i++) {
+          const yy = -len * 0.12 + i * len * 0.22;
+          g.beginPath(); g.moveTo(-w * 0.55 * (1 - i * 0.3), yy); g.lineTo(-w * 0.1, yy + 1); g.stroke();
+        }
+        return c;
+      };
+      this.sprites.carrot = make(false);
+      this.sprites.golden = make(true);
+    }
+
+    buildStatic() {
+      const L = this.level, ts = this.ts, d = this.dpr;
+      const c = document.createElement('canvas');
+      c.width = Math.ceil(L.W * ts * d);
+      c.height = Math.ceil(L.H * ts * d);
+      const g = c.getContext('2d');
+      g.scale(d, d);
+      const rand = RT.rng(L.seed + 99);
+      g.fillStyle = C.void;
+      g.fillRect(0, 0, L.W * ts, L.H * ts);
+
+      // ground
+      for (let y = 0; y < L.H; y++) {
+        for (let x = 0; x < L.W; x++) {
+          const t = L.at(x, y);
+          if (t === T.WALL || t === T.VOID) continue;
+          g.fillStyle = (t === T.LAIR || t === T.GATE) ? C.dirt : ((x + y) % 2 ? C.ground : C.ground2);
+          g.fillRect(x * ts, y * ts, ts + 0.5, ts + 0.5);
+          if (t === T.PATH && rand() < 0.35) {
+            g.strokeStyle = C.tuft; g.lineWidth = Math.max(1, ts * 0.04);
+            const gx = x * ts + rand() * ts * 0.8 + ts * 0.1, gy = y * ts + rand() * ts * 0.8 + ts * 0.15;
+            g.beginPath();
+            g.moveTo(gx - ts * 0.06, gy); g.lineTo(gx - ts * 0.09, gy - ts * 0.1);
+            g.moveTo(gx, gy); g.lineTo(gx, gy - ts * 0.13);
+            g.moveTo(gx + ts * 0.06, gy); g.lineTo(gx + ts * 0.09, gy - ts * 0.1);
+            g.stroke();
+          }
+        }
+      }
+      // decorations in the void around the lair
+      for (let y = 0; y < L.H; y++) {
+        for (let x = 0; x < L.OX; x++) {
+          if (L.at(x, y) !== T.VOID) continue;
+          if (rand() < 0.5) {
+            g.fillStyle = 'rgba(70,120,80,.25)';
+            ellipse(g, x * ts + rand() * ts, y * ts + rand() * ts, ts * 0.12, ts * 0.06);
+            g.fill();
+          }
+        }
+      }
+
+      // hedges: outline pass, fill pass, top light, leaves
+      const isWall = (x, y) => L.at(x, y) === T.WALL;
+      const pass = (inset, color) => {
+        g.fillStyle = color;
+        for (let y = 0; y < L.H; y++) {
+          for (let x = 0; x < L.W; x++) {
+            if (!isWall(x, y)) continue;
+            const px = x * ts, py = y * ts;
+            rr(g, px + inset, py + inset, ts - inset * 2, ts - inset * 2, ts * 0.3);
+            g.fill();
+            if (isWall(x + 1, y)) g.fillRect(px + ts / 2, py + inset, ts, ts - inset * 2);
+            if (isWall(x, y + 1)) g.fillRect(px + inset, py + ts / 2, ts - inset * 2, ts);
+            if (isWall(x + 1, y) && isWall(x, y + 1) && isWall(x + 1, y + 1)) g.fillRect(px + ts / 2, py + ts / 2, ts, ts);
+          }
+        }
+      };
+      pass(ts * 0.04, C.hedgeEdge);
+      pass(ts * 0.12, C.hedge);
+      // light on tiles with open ground above
+      g.fillStyle = C.hedgeTop;
+      for (let y = 0; y < L.H; y++) {
+        for (let x = 0; x < L.W; x++) {
+          if (!isWall(x, y)) continue;
+          const px = x * ts, py = y * ts;
+          if (!isWall(x, y - 1)) {
+            rr(g, px + ts * 0.16, py + ts * 0.14, ts * 0.68, ts * 0.22, ts * 0.11);
+            g.fill();
+          }
+        }
+      }
+      for (let y = 0; y < L.H; y++) {
+        for (let x = 0; x < L.W; x++) {
+          if (!isWall(x, y)) continue;
+          const n = 1 + Math.floor(rand() * 3);
+          for (let i = 0; i < n; i++) {
+            g.fillStyle = rand() < 0.15 ? '#f2c6e0' : C.leaf;
+            const r = ts * (0.04 + rand() * 0.04);
+            g.beginPath();
+            g.arc(x * ts + ts * (0.25 + rand() * 0.5), y * ts + ts * (0.3 + rand() * 0.45), r, 0, Math.PI * 2);
+            g.fill();
+          }
+        }
+      }
+      this.staticLayer = c;
+    }
+
+    // ---------- per-frame ----------
+    draw(game) {
+      const ctx = this.ctx, L = this.level;
+      if (!L) return;
+      const ts = this.ts;
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.fillStyle = C.void;
+      ctx.fillRect(0, 0, this.vw, this.vh);
+
+      // camera
+      const worldW = L.W * ts, worldH = L.H * ts;
+      const rp = game.posOf(game.rabbit);
+      const target = { x: 0, y: 0 };
+      target.x = worldW <= this.vw ? (this.vw - worldW) / 2 : clamp(this.vw / 2 - (rp.x + 0.5) * ts, this.vw - worldW, 0);
+      target.y = worldH <= this.vh ? (this.vh - worldH) / 2 : clamp(this.vh / 2 - (rp.y + 0.5) * ts, this.vh - worldH, 0);
+      if (!this.cam.init) { this.cam.x = target.x; this.cam.y = target.y; this.cam.init = true; }
+      this.cam.x += (target.x - this.cam.x) * 0.15;
+      this.cam.y += (target.y - this.cam.y) * 0.15;
+      let ox = Math.round(this.cam.x), oy = Math.round(this.cam.y);
+      if (this.shake > 0) {
+        ox += (Math.random() - 0.5) * this.shake;
+        oy += (Math.random() - 0.5) * this.shake;
+        this.shake *= 0.88;
+        if (this.shake < 0.4) this.shake = 0;
+      }
+
+      ctx.drawImage(this.staticLayer, ox, oy, worldW, worldH);
+      ctx.save();
+      ctx.translate(ox, oy);
+      const t = game.clock;
+
+      // visible tile range
+      const x0 = Math.max(0, Math.floor(-ox / ts) - 1), x1 = Math.min(L.W, Math.ceil((this.vw - ox) / ts) + 1);
+      const y0 = Math.max(0, Math.floor(-oy / ts) - 1), y1 = Math.min(L.H, Math.ceil((this.vh - oy) / ts) + 1);
+
+      this.drawLair(ctx, game, t);
+      this.drawDoor(ctx, game, t);
+
+      // carrots
+      const spr = this.sprites.carrot;
+      for (const k of L.carrots) {
+        const x = k % L.W, y = (k / L.W) | 0;
+        if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+        const bob = Math.sin(t * 3 + x * 0.7 + y * 1.3) * ts * 0.03;
+        ctx.drawImage(spr, x * ts + ts * 0.15, y * ts + ts * 0.15 + bob, ts * 0.7, ts * 0.7);
+      }
+      if (game.golden) {
+        const gd = game.golden;
+        if (gd.life > 3 || Math.floor(t * 8) % 2 === 0) {
+          const s = 1 + Math.sin(t * 6) * 0.1;
+          const cx = (gd.x + 0.5) * ts, cy = (gd.y + 0.5) * ts;
+          const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, ts * 0.8);
+          glow.addColorStop(0, 'rgba(255,220,80,.55)'); glow.addColorStop(1, 'rgba(255,220,80,0)');
+          ctx.fillStyle = glow; ctx.fillRect(cx - ts, cy - ts, ts * 2, ts * 2);
+          ctx.drawImage(this.sprites.golden, cx - ts * 0.5 * s, cy - ts * 0.5 * s, ts * s, ts * s);
+        }
+      }
+
+      this.drawCage(ctx, game, t);
+
+      // characters: draw the one lower on screen last
+      const e = game.enemy;
+      const ep = game.posOf(e);
+      const enemyVisible = e.state !== 'lair';
+      const drawE = () => { if (enemyVisible) this.drawBigMouth(ctx, (ep.x + 0.5) * ts, (ep.y + 0.5) * ts, ts, e, t, game); };
+      const drawR = () => this.drawRabbit(ctx, (rp.x + 0.5) * ts, (rp.y + 0.5) * ts, ts * 1.15, game.rabbit, t, game);
+      if (game.state === 'caught') { drawR(); drawE(); }
+      else if (ep.y > rp.y) { drawR(); drawE(); } else { drawE(); drawR(); }
+
+      // particles
+      for (const p of game.particles) {
+        const a = Math.max(0, p.life / p.max);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = p.color;
+        if (p.star) this.star(ctx, p.x * ts, p.y * ts, p.size * ts, t * 4 + p.x);
+        else { ctx.beginPath(); ctx.arc(p.x * ts, p.y * ts, p.size * ts, 0, Math.PI * 2); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1;
+
+      // popups
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const p of game.popups) {
+        const a = Math.min(1, p.life / 0.4);
+        ctx.globalAlpha = a;
+        const size = Math.max(12, ts * (p.big ? 0.75 : 0.5));
+        ctx.font = `${size}px "Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif`;
+        ctx.lineWidth = Math.max(3, size * 0.18);
+        ctx.strokeStyle = 'rgba(10,20,14,.85)';
+        ctx.strokeText(p.text, p.x * ts, p.y * ts);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, p.x * ts, p.y * ts);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      this.drawVignette(ctx, game, t);
+    }
+
+    star(ctx, x, y, r, rot) {
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = rot + i * Math.PI / 5;
+        const rr2 = i % 2 ? r * 0.45 : r;
+        ctx.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+
+    drawLair(ctx, game, t) {
+      const L = this.level, ts = this.ts;
+      const lx = (L.lair.x + 0.5) * ts, ly = (L.lair.y + 0.5) * ts;
+      // cave mouth
+      const grd = ctx.createRadialGradient(lx, ly, ts * 0.05, lx, ly, ts * 0.7);
+      grd.addColorStop(0, '#000'); grd.addColorStop(0.7, '#160a0e'); grd.addColorStop(1, 'rgba(22,10,14,0)');
+      ctx.fillStyle = grd;
+      ellipse(ctx, lx, ly, ts * 0.62, ts * 0.55); ctx.fill();
+      // stones
+      ctx.fillStyle = '#5a5248';
+      for (let i = 0; i < 5; i++) {
+        const a = Math.PI * 0.6 + i * Math.PI * 0.2;
+        ellipse(ctx, lx + Math.cos(a) * ts * 0.55, ly - Math.sin(a) * ts * 0.48 * -1, ts * 0.1, ts * 0.07); ctx.fill();
+      }
+      const e = game.enemy;
+      if (e.state === 'lair') {
+        const close = e.timer < 3;
+        const blink = Math.sin(t * 2.3) > 0.94;
+        if (!blink) {
+          const jx = close ? (Math.random() - 0.5) * ts * 0.06 : 0;
+          ctx.fillStyle = close ? '#ff3344' : '#ffd84a';
+          ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = ts * 0.4;
+          ellipse(ctx, lx - ts * 0.14 + jx, ly - ts * 0.04, ts * 0.08, ts * 0.05, 0.3); ctx.fill();
+          ellipse(ctx, lx + ts * 0.14 + jx, ly - ts * 0.04, ts * 0.08, ts * 0.05, -0.3); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+      // gate: wooden planks
+      const gx = L.gate.x * ts, gy = L.gate.y * ts;
+      const lift = game.gateAnim * ts * 0.82;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(gx, gy - ts * 0.9, ts, ts * 1.9); ctx.clip();
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = i % 2 ? '#8a5a32' : '#9c6a3c';
+        rr(ctx, gx + ts * (0.12 + i * 0.27), gy + ts * 0.06 - lift, ts * 0.22, ts * 0.88, ts * 0.06);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#6b4224';
+      ctx.fillRect(gx + ts * 0.06, gy + ts * 0.3 - lift, ts * 0.88, ts * 0.12);
+      ctx.restore();
+    }
+
+    drawCage(ctx, game, t) {
+      const L = this.level, ts = this.ts;
+      const a = game.cageAnim;
+      if (a >= 1) return;
+      const x = L.cage.x * ts, y = L.cage.y * ts - a * ts * 0.9;
+      ctx.save();
+      ctx.globalAlpha = 1 - a;
+      ctx.strokeStyle = '#c9d3dc';
+      ctx.lineWidth = Math.max(1.5, ts * 0.07);
+      ctx.lineCap = 'round';
+      rr(ctx, x + ts * 0.06, y + ts * 0.06, ts * 0.88, ts * 0.88, ts * 0.12);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1.2, ts * 0.055);
+      for (let i = 1; i <= 4; i++) {
+        const bx = x + ts * 0.06 + i * ts * 0.176;
+        ctx.beginPath(); ctx.moveTo(bx, y + ts * 0.08); ctx.lineTo(bx, y + ts * 0.92); ctx.stroke();
+      }
+      // lock
+      ctx.fillStyle = '#ffd23f';
+      rr(ctx, x + ts * 0.78, y + ts * 0.42, ts * 0.18, ts * 0.16, ts * 0.04); ctx.fill();
+      ctx.restore();
+    }
+
+    drawDoor(ctx, game, t) {
+      const L = this.level, ts = this.ts;
+      const x = L.door.x * ts, y = L.door.y * ts;
+      const cx = x + ts / 2, cy = y + ts / 2;
+      if (game.doorOpen) {
+        const pulse = 0.85 + Math.sin(t * 5) * 0.15;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, ts * 1.6 * pulse);
+        g.addColorStop(0, 'rgba(255,255,230,1)');
+        g.addColorStop(0.3, 'rgba(160,255,200,.8)');
+        g.addColorStop(1, 'rgba(80,220,160,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(cx - ts * 2, cy - ts * 2, ts * 4, ts * 4);
+        // archway
+        ctx.fillStyle = '#fffbe6';
+        rr(ctx, x + ts * 0.18, y + ts * 0.1, ts * 0.64, ts * 0.85, ts * 0.32); ctx.fill();
+        ctx.fillStyle = 'rgba(255,210,63,.9)';
+        for (let i = 0; i < 4; i++) {
+          const a = t * 2 + i * Math.PI / 2;
+          this.star(ctx, cx + Math.cos(a) * ts * 0.62, cy + Math.sin(a) * ts * 0.62, ts * 0.1, t * 3);
+        }
+      } else {
+        ctx.fillStyle = '#5b3a1f';
+        rr(ctx, x + ts * 0.14, y + ts * 0.06, ts * 0.72, ts * 0.9, ts * 0.34); ctx.fill();
+        ctx.fillStyle = '#8b5a2b';
+        rr(ctx, x + ts * 0.2, y + ts * 0.12, ts * 0.6, ts * 0.8, ts * 0.28); ctx.fill();
+        ctx.strokeStyle = '#6b4220'; ctx.lineWidth = Math.max(1, ts * 0.04);
+        for (let i = 1; i < 3; i++) {
+          ctx.beginPath(); ctx.moveTo(x + ts * (0.2 + i * 0.2), y + ts * 0.18); ctx.lineTo(x + ts * (0.2 + i * 0.2), y + ts * 0.9); ctx.stroke();
+        }
+        // padlock
+        ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = Math.max(1.5, ts * 0.06);
+        ctx.beginPath(); ctx.arc(cx, cy + ts * 0.02, ts * 0.11, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = '#ffd23f';
+        rr(ctx, cx - ts * 0.16, cy + ts * 0.02, ts * 0.32, ts * 0.26, ts * 0.05); ctx.fill();
+        ctx.fillStyle = '#5b3a1f';
+        ctx.beginPath(); ctx.arc(cx, cy + ts * 0.13, ts * 0.04, 0, Math.PI * 2); ctx.fill();
+        // progress ring around the door shows how close it is to opening
+        const frac = 1 - L.carrots.size / Math.max(1, game.carrotsTotal);
+        ctx.strokeStyle = 'rgba(255,138,31,.85)'; ctx.lineWidth = Math.max(2, ts * 0.07);
+        ctx.beginPath(); ctx.arc(cx, cy, ts * 0.62, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    drawRabbit(ctx, x, y, s, r, t, game) {
+      ctx.save();
+      ctx.translate(x, y);
+      const moving = !!r.dir && game.state === 'play';
+      if (game.state === 'caught') {
+        const k = Math.max(0, game.caughtTimer / 1.8);
+        ctx.rotate((1 - k) * 6);
+        ctx.scale(k, k);
+      }
+      const bob = moving ? -Math.abs(Math.sin(t * 14)) * s * 0.1 : Math.sin(t * 3) * s * 0.015;
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ellipse(ctx, 0, s * 0.34, s * 0.26, s * 0.08); ctx.fill();
+      ctx.translate(0, bob);
+
+      const invis = game.invis > 0;
+      const fighter = game.fighter > 0;
+      if (invis) {
+        ctx.globalAlpha = 0.28 + Math.sin(t * 10) * 0.08;
+        if (game.invis < 1.5 && Math.floor(t * 10) % 2) ctx.globalAlpha = 0.7;
+      }
+      if (fighter) {
+        const pr = s * (0.55 + Math.sin(t * 12) * 0.05);
+        const g = ctx.createRadialGradient(0, 0, s * 0.1, 0, 0, pr);
+        g.addColorStop(0, 'rgba(255,90,60,.0)'); g.addColorStop(0.6, 'rgba(255,90,60,.35)'); g.addColorStop(1, 'rgba(255,90,60,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, pr, 0, Math.PI * 2); ctx.fill();
+      }
+      const f = r.face || RT.DIR.right;
+      const fx = f.x, back = f.y === -1;
+      const white = '#f6f2ea', pink = '#f7a8bc', shade = '#d9d2c4';
+
+      // tail
+      if (fx !== 0 || back) {
+        ctx.fillStyle = '#ffffff';
+        ellipse(ctx, back ? 0 : -fx * s * 0.27, back ? s * 0.16 : s * 0.12, s * 0.09, s * 0.09); ctx.fill();
+      }
+      // ears
+      for (const side of [-1, 1]) {
+        ctx.save();
+        ctx.translate(side * s * 0.1 + fx * s * 0.04, -s * 0.18);
+        ctx.rotate(side * 0.2 + fx * 0.3 + (moving ? Math.sin(t * 14 + side) * 0.1 : Math.sin(t * 2 + side) * 0.04));
+        ctx.fillStyle = white;
+        ellipse(ctx, 0, -s * 0.2, s * 0.08, s * 0.22); ctx.fill();
+        if (!back) { ctx.fillStyle = pink; ellipse(ctx, 0, -s * 0.19, s * 0.04, s * 0.15); ctx.fill(); }
+        ctx.restore();
+      }
+      // body
+      ctx.fillStyle = shade;
+      ellipse(ctx, 0, s * 0.12, s * 0.27, s * 0.23); ctx.fill();
+      ctx.fillStyle = white;
+      ellipse(ctx, 0, s * 0.1, s * 0.25, s * 0.21); ctx.fill();
+      // head
+      const hx = fx * s * 0.06;
+      ellipse(ctx, hx, -s * 0.06, s * 0.2, s * 0.18); ctx.fill();
+      if (!back) {
+        const spread = fx === 0 ? s * 0.08 : s * 0.06;
+        const ex = hx + fx * s * 0.06;
+        ctx.fillStyle = '#1b1420';
+        for (const side of [-1, 1]) {
+          ellipse(ctx, ex + side * spread, -s * 0.09, s * 0.035, s * 0.045); ctx.fill();
+        }
+        ctx.fillStyle = '#fff';
+        for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(ex + side * spread + s * 0.012, -s * 0.105, s * 0.012, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = pink;
+        ellipse(ctx, hx + fx * s * 0.14, -s * 0.02, s * 0.03, s * 0.022); ctx.fill();
+        ctx.fillStyle = 'rgba(247,140,170,.45)';
+        for (const side of [-1, 1]) { ellipse(ctx, ex + side * s * 0.12, -s * 0.0, s * 0.035, s * 0.022); ctx.fill(); }
+      }
+      // fighter gloves
+      if (fighter) {
+        const punch = Math.sin(t * 16) * s * 0.05;
+        for (const side of [-1, 1]) {
+          const gx = side * s * 0.27 + (side === Math.sign(fx || 1) ? punch : 0), gy = s * 0.08;
+          ctx.fillStyle = '#e8332a';
+          ctx.beginPath(); ctx.arc(gx, gy, s * 0.11, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(gx - s * 0.06 * side - s * 0.03, gy - s * 0.06, s * 0.06, s * 0.12);
+        }
+      }
+      if (invis) {
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = 'rgba(127,212,255,.8)';
+        ctx.setLineDash([s * 0.08, s * 0.08]);
+        ctx.lineDashOffset = t * 30;
+        ctx.lineWidth = Math.max(1, s * 0.04);
+        ctx.beginPath(); ctx.arc(0, -s * 0.02, s * 0.42, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+
+    drawBigMouth(ctx, x, y, s, e, t, game) {
+      const R = s * 0.6;
+      const f = e.face || RT.DIR.right;
+      const ang = Math.atan2(f.y, f.x);
+      const dizzy = e.state === 'dizzy';
+      const flying = e.state === 'flying';
+      let mouth = dizzy ? 0.12 : 0.1 + Math.abs(Math.sin(t * (game.state === 'caught' ? 16 : 9))) * 0.55;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(0,0,0,.4)';
+      ellipse(ctx, 0, s * 0.42, R * 0.8, R * 0.22); ctx.fill();
+      if (flying) ctx.rotate(t * 20);
+      ctx.save();
+      ctx.rotate(ang);
+      if (f.x < 0) ctx.scale(1, -1);
+
+      // mouth cavity
+      ctx.fillStyle = '#3d0518';
+      ctx.beginPath(); ctx.moveTo(-R * 0.05, 0); ctx.arc(0, 0, R * 0.97, -mouth, mouth); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff5c8a';
+      ellipse(ctx, R * 0.45, R * 0.06, R * 0.28, R * Math.min(0.14, mouth * 0.25)); ctx.fill();
+
+      // body
+      const g = ctx.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
+      g.addColorStop(0, dizzy ? '#b17aa6' : '#d4418f');
+      g.addColorStop(1, dizzy ? '#5a3460' : '#5e1149');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, mouth, Math.PI * 2 - mouth); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#2a0420'; ctx.lineWidth = Math.max(1.5, s * 0.05);
+      ctx.beginPath(); ctx.arc(0, 0, R, mouth, Math.PI * 2 - mouth); ctx.stroke();
+
+      // teeth
+      ctx.fillStyle = '#fffaf0';
+      for (const side of [-1, 1]) {
+        const a = side * mouth;
+        for (let i = 0; i < 4; i++) {
+          const r0 = R * (0.3 + i * 0.16), r1 = r0 + R * 0.14, rm = (r0 + r1) / 2;
+          const ta = a - side * Math.min(0.32, mouth * 0.9 + 0.1);
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+          ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+          ctx.lineTo(Math.cos(ta) * rm, Math.sin(ta) * rm);
+          ctx.closePath(); ctx.fill();
+        }
+      }
+      // spikes on the back
+      ctx.fillStyle = '#3c0a30';
+      for (let i = -2; i <= 2; i++) {
+        const a = Math.PI + i * 0.38;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a - 0.14) * R * 0.95, Math.sin(a - 0.14) * R * 0.95);
+        ctx.lineTo(Math.cos(a) * R * 1.22, Math.sin(a) * R * 1.22);
+        ctx.lineTo(Math.cos(a + 0.14) * R * 0.95, Math.sin(a + 0.14) * R * 0.95);
+        ctx.fill();
+      }
+      // eye + angry brow
+      const exx = R * 0.12, eyy = -R * 0.5;
+      ctx.fillStyle = '#fff';
+      ellipse(ctx, exx, eyy, R * 0.2, R * 0.18); ctx.fill();
+      if (dizzy) {
+        ctx.strokeStyle = '#2a0420'; ctx.lineWidth = Math.max(1.5, s * 0.04);
+        ctx.beginPath();
+        for (let i = 0; i < 12; i++) {
+          const a = i * 0.7 + t * 6, rr2 = R * 0.012 * i;
+          ctx.lineTo(exx + Math.cos(a) * rr2, eyy + Math.sin(a) * rr2);
+        }
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = game.invis > 0 ? '#7a6b80' : '#d4001e';
+        ctx.beginPath(); ctx.arc(exx + R * 0.06, eyy + R * 0.02, R * 0.09, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(exx + R * 0.07, eyy + R * 0.02, R * 0.045, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#1a0214'; ctx.lineWidth = Math.max(2, s * 0.08); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(exx - R * 0.24, eyy - R * 0.3); ctx.lineTo(exx + R * 0.26, eyy - R * 0.12); ctx.stroke();
+      }
+      ctx.restore();
+
+      // status bubbles (not rotated)
+      if (dizzy) {
+        ctx.fillStyle = '#ffd23f';
+        for (let i = 0; i < 3; i++) {
+          const a = t * 5 + i * Math.PI * 2 / 3;
+          this.star(ctx, Math.cos(a) * R * 0.8, -R * 0.95 + Math.sin(a) * R * 0.25, s * 0.1, t * 4);
+        }
+      } else if (game.invis > 0 && e.state === 'chase' && game.state === 'play') {
+        ctx.font = `${Math.max(12, s * 0.6)}px "Lilita One", system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 3;
+        const qy = -R * 1.35 + Math.sin(t * 4) * s * 0.06;
+        ctx.strokeText('?', 0, qy); ctx.fillText('?', 0, qy);
+      }
+      ctx.restore();
+    }
+
+    drawVignette(ctx, game, t) {
+      const w = this.vw, h = this.vh;
+      let color = null, strength = 0;
+      if (game.state === 'play' && game.enemy.state === 'chase' && game.invis <= 0) {
+        const d = game.enemyDistance();
+        if (d < 6) { color = '255,40,70'; strength = (1 - d / 6) * 0.45; }
+      }
+      if (game.invis > 0) { color = '90,180,255'; strength = 0.28; }
+      if (game.fighter > 0) { color = '255,110,50'; strength = 0.14 + Math.sin(t * 10) * 0.04; }
+      if (game.state === 'caught') { color = '255,30,50'; strength = 0.5; }
+      if (!color) return;
+      const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
+      g.addColorStop(0, `rgba(${color},0)`);
+      g.addColorStop(1, `rgba(${color},${strength})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  RT.Renderer = Renderer;
+})();
+</script>
+<script>
+/* Rabbittor — game rules and state. */
+(function () {
+  const RT = window.RT;
+  const { T, DIR, DIR_LIST } = RT;
+
+  class Game {
+    constructor(renderer, sound, ui) {
+      this.renderer = renderer;
+      this.sound = sound;
+      this.ui = ui;
+      this.state = 'title';
+      this.clock = 0;
+      this.particles = [];
+      this.popups = [];
+      this.level = null;
+      this.heartTimer = 0;
+    }
+
+    // ---------- run / level setup ----------
+    newRun(diffKey) {
+      this.diff = RT.DIFFICULTIES[diffKey];
+      this.lives = this.diff.lives;
+      this.score = 0;
+      this.levelNum = 1;
+      this.charges = 0;
+      this.chargeProgress = 0;
+      this.totalCarrots = 0;
+      this.bounces = 0;
+      this.startLevel();
+    }
+
+    startLevel() {
+      const d = this.diff;
+      const portrait = window.innerHeight > window.innerWidth * 1.05;
+      const base = portrait ? d.port : d.land;
+      // later levels get bigger mazes (on tall phone screens only taller, so they still fit the width)
+      const grow = Math.min(this.levelNum - 1, 3) * 4;
+      const growW = portrait ? Math.min(this.levelNum - 1, 3) * 2 : grow;
+      this.seed = (Math.random() * 1e9) | 0;
+      this.level = RT.generateLevel(base[0] + growW, base[1] + grow, d.braid, d.loops, this.seed);
+      this.carrotsTotal = this.level.carrots.size;
+      this.doorOpen = false;
+      this.levelTime = 0;
+      this.golden = null;
+      this.goldenTimer = 14 + Math.random() * 10;
+      this.particles = [];
+      this.popups = [];
+      this.streak = 0;
+      this.lastEat = -9;
+      this.invis = 0;
+      this.invisCd = 0;
+      this.fighter = 0;
+      this.enemySpeedMul = Math.min(d.enemySpeed + (this.levelNum - 1) * 0.04, 1.08);
+      this.renderer.setLevel(this.level);
+      this.resetPositions(true);
+      this.ui.levelStarted(this);
+    }
+
+    resetPositions(first) {
+      const L = this.level;
+      this.rabbit = { tx: L.cage.x, ty: L.cage.y, p: 0, dir: null, next: null, face: DIR.right };
+      this.enemy = {
+        tx: L.lair.x, ty: L.lair.y, p: 0, dir: null, face: DIR.right,
+        state: 'lair', timer: first ? this.diff.enemyDelay : this.diff.respawnDelay,
+        lastSeen: null, warned: false, lastTick: 99
+      };
+      this.gateOpen = false;
+      this.gateAnim = 0;
+      this.cageOpen = false;
+      this.cageAnim = 0;
+      this.invis = 0;
+      this.fighter = 0;
+      this.state = 'intro';
+      this.introTimer = first ? 3.2 : 1.8;
+      this.introFirst = first;
+      this.lastCount = null;
+    }
+
+    // ---------- helpers ----------
+    posOf(e) {
+      if (e.fly) {
+        const k = Math.min(1, e.fly.t);
+        const ease = 1 - Math.pow(1 - k, 3);
+        return {
+          x: e.fly.fx + (e.fly.tx - e.fly.fx) * ease,
+          y: e.fly.fy + (e.fly.ty - e.fly.fy) * ease - Math.sin(k * Math.PI) * 3
+        };
+      }
+      return { x: e.tx + (e.dir ? e.dir.x * e.p : 0), y: e.ty + (e.dir ? e.dir.y * e.p : 0) };
+    }
+    tileOf(e) {
+      if (e.dir && e.p >= 0.5) return { x: e.tx + e.dir.x, y: e.ty + e.dir.y };
+      return { x: e.tx, y: e.ty };
+    }
+    rabbitCan(x, y) {
+      const t = this.level.at(x, y);
+      if (x < this.level.OX) return false;
+      return t === T.PATH || (t === T.DOOR && this.doorOpen);
+    }
+    enemyTile(x, y) {
+      const t = this.level.at(x, y);
+      if (t === T.PATH) return true;
+      if (t === T.LAIR || t === T.GATE) return this.gateOpen;
+      return false;
+    }
+    enemyDistance() {
+      const a = this.posOf(this.rabbit), b = this.posOf(this.enemy);
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    // ---------- input ----------
+    setDirection(name) {
+      const d = DIR[name];
+      if (!d || !this.rabbit) return;
+      this.rabbit.next = d;
+    }
+
+    useInvisibility() {
+      if (this.state !== 'play') return;
+      if (this.invis > 0 || this.invisCd > 0) {
+        this.sound.deny();
+        if (this.invisCd > 0 && this.invis <= 0) this.ui.toast(`Invisibility recharging: ${Math.ceil(this.invisCd)}s`);
+        return;
+      }
+      this.invis = this.diff.invisDur;
+      this.invisCd = RT.INVIS_COOLDOWN;
+      this.sound.invis();
+      const p = this.posOf(this.rabbit);
+      this.popup(p.x + 0.5, p.y - 0.2, 'Invisible!', '#9fe0ff');
+      this.burst(p.x + 0.5, p.y + 0.5, '#9fe0ff', 14);
+    }
+
+    useFighter() {
+      if (this.state !== 'play') return;
+      if (this.fighter > 0) return;
+      if (this.charges <= 0) {
+        this.sound.deny();
+        this.ui.toast(`Fighter needs ${RT.FIGHTER_COST} carrots — ${RT.FIGHTER_COST - this.chargeProgress} to go`);
+        return;
+      }
+      this.charges--;
+      this.normalizeCharges();
+      this.fighter = this.diff.fighterDur;
+      this.sound.fighter();
+      const p = this.posOf(this.rabbit);
+      this.popup(p.x + 0.5, p.y - 0.2, 'Fighter!', '#ff7b54');
+      this.burst(p.x + 0.5, p.y + 0.5, '#ff7b54', 14);
+    }
+
+    togglePause() {
+      if (this.state === 'paused') this.resume();
+      else if (this.state === 'play' || this.state === 'intro') this.pause();
+    }
+    pause() {
+      if (this.state !== 'play' && this.state !== 'intro') return;
+      this.pausedFrom = this.state;
+      this.state = 'paused';
+      this.sound.stopMusic();
+      this.ui.showPause(true);
+    }
+    resume() {
+      if (this.state !== 'paused') return;
+      this.state = this.pausedFrom || 'play';
+      this.ui.showPause(false);
+      this.sound.startMusic();
+    }
+
+    // ---------- main update ----------
+    update(dt) {
+      this.clock += dt;
+      if (this.state === 'paused' || this.state === 'title') return;
+
+      this.cageAnim = this.cageOpen ? Math.min(1, this.cageAnim + dt * 1.8) : 0;
+      this.gateAnim = this.gateOpen ? Math.min(1, this.gateAnim + dt * 2) : Math.max(0, this.gateAnim - dt * 2);
+
+      if (this.state === 'intro') {
+        this.introTimer -= dt;
+        if (this.introFirst) {
+          const n = Math.ceil(this.introTimer - 0.2);
+          if (n !== this.lastCount && n >= 1 && n <= 3) { this.lastCount = n; this.ui.countdown(String(n)); this.sound.tick(); }
+        } else if (this.lastCount == null) { this.lastCount = 0; this.ui.countdown('Ready!'); }
+        if (this.introTimer <= 0) {
+          this.cageOpen = true;
+          this.state = 'play';
+          this.ui.countdown('GO!', true);
+          this.sound.go();
+          const L = this.level;
+          this.burst(L.cage.x + 0.5, L.cage.y + 0.5, '#c9d3dc', 10);
+        }
+      } else if (this.state === 'play') {
+        this.updatePlay(dt);
+      } else if (this.state === 'caught') {
+        this.caughtTimer -= dt;
+        if (this.caughtTimer <= 0) {
+          if (this.lives <= 0) this.gameOver();
+          else this.resetPositions(false);
+        }
+      }
+
+      // particles & popups
+      for (const p of this.particles) {
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 0) * dt; p.life -= dt;
+      }
+      this.particles = this.particles.filter(p => p.life > 0);
+      for (const p of this.popups) { p.y -= dt * 1.1; p.life -= dt; }
+      this.popups = this.popups.filter(p => p.life > 0);
+    }
+
+    updatePlay(dt) {
+      this.levelTime += dt;
+      if (this.invis > 0) {
+        this.invis -= dt;
+        if (this.invis <= 0) { this.invis = 0; this.sound.invisEnd(); }
+      }
+      if (this.invisCd > 0) {
+        this.invisCd -= dt;
+        if (this.invisCd <= 0) { this.invisCd = 0; this.ui.toast('Invisibility is ready!'); this.sound.charge(); }
+      }
+      if (this.fighter > 0) {
+        this.fighter -= dt;
+        if (this.fighter <= 0) this.fighter = 0;
+      }
+
+      this.moveRabbit(dt);
+      if (this.state !== 'play') return;
+      this.updateEnemy(dt);
+      this.checkCollision();
+      this.updateGolden(dt);
+
+      // heartbeat when Big Mouth is near
+      if (this.enemy.state === 'chase' && this.invis <= 0) {
+        const d = this.enemyDistance();
+        this.sound.musicTempo = d < 6 ? 1.35 : 1;
+        if (d < 6) {
+          this.heartTimer -= dt;
+          if (this.heartTimer <= 0) { this.heartTimer = 0.35 + d * 0.12; this.sound.heart(1 - d / 7); }
+        }
+      } else this.sound.musicTempo = 1;
+    }
+
+    // ---------- movement ----------
+    step(e, dist, decide, arrive) {
+      let guard = 10;
+      while (guard-- > 0) {
+        if (e.p === 0) { decide(e); if (!e.dir) return; }
+        const need = 1 - e.p;
+        if (dist < need) { e.p += dist; return; }
+        dist -= need;
+        e.tx += e.dir.x; e.ty += e.dir.y; e.p = 0;
+        if (arrive) arrive(e);
+        if (this.state !== 'play') return;
+        if (dist <= 1e-6) return;
+      }
+    }
+
+    moveRabbit(dt) {
+      const r = this.rabbit;
+      if (!this.cageOpen) return;
+      if (r.next && r.dir && r.p > 0 && r.next === RT.opposite(r.dir)) {
+        r.tx += r.dir.x; r.ty += r.dir.y; r.p = 1 - r.p; r.dir = r.next; r.face = r.dir;
+      }
+      this.step(r, RT.RABBIT_SPEED * dt, (e) => this.rabbitDecide(e), (e) => this.rabbitArrive(e));
+    }
+
+    rabbitDecide(r) {
+      const can = (d) => d && this.rabbitCan(r.tx + d.x, r.ty + d.y);
+      if (can(r.next)) r.dir = r.next;
+      else if (!can(r.dir)) r.dir = null;
+      if (r.dir) r.face = r.dir;
+    }
+
+    rabbitArrive(r) {
+      const L = this.level;
+      const k = L.key(r.tx, r.ty);
+      if (L.carrots.has(k)) this.eatCarrot(k, r.tx, r.ty);
+      if (this.golden && this.golden.x === r.tx && this.golden.y === r.ty) this.eatGolden();
+      if (L.at(r.tx, r.ty) === T.DOOR && this.doorOpen) this.escape();
+    }
+
+    eatCarrot(k, x, y) {
+      this.level.carrots.delete(k);
+      this.totalCarrots++;
+      if (this.levelTime - this.lastEat < 0.5) this.streak++; else this.streak = 1;
+      this.lastEat = this.levelTime;
+      this.addScore(RT.CARROT_POINTS);
+      if (this.streak > 0 && this.streak % 15 === 0) {
+        this.addScore(50);
+        this.popup(x + 0.5, y, `Munch x${this.streak} +${Math.round(50 * this.diff.mult)}`, '#ffd23f');
+      }
+      this.addCharge(1, x, y);
+      this.sound.munch();
+      for (let i = 0; i < 4; i++) {
+        this.particles.push({
+          x: x + 0.5, y: y + 0.5, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 3,
+          g: 8, life: 0.4, max: 0.4, size: 0.05, color: i % 2 ? '#ff8a1f' : '#6fdc6a'
+        });
+      }
+      if (this.level.carrots.size === 0) this.openDoor();
+    }
+
+    addCharge(n, x, y) {
+      if (this.charges >= RT.FIGHTER_MAX) { this.chargeProgress = RT.FIGHTER_COST; return; }
+      this.chargeProgress += n;
+      if (this.chargeProgress >= RT.FIGHTER_COST) {
+        this.chargeProgress -= RT.FIGHTER_COST;
+        this.charges++;
+        if (this.charges >= RT.FIGHTER_MAX) this.chargeProgress = RT.FIGHTER_COST;
+        this.popup(x + 0.5, y - 0.4, 'Fighter ready!', '#ff7b54', true);
+        this.sound.charge();
+      }
+    }
+    normalizeCharges() {
+      if (this.chargeProgress >= RT.FIGHTER_COST && this.charges < RT.FIGHTER_MAX) {
+        this.charges++;
+        this.chargeProgress = this.charges >= RT.FIGHTER_MAX ? RT.FIGHTER_COST : 0;
+      }
+    }
+
+    eatGolden() {
+      const g = this.golden;
+      this.golden = null;
+      this.goldenTimer = 20 + Math.random() * 12;
+      this.addScore(RT.GOLDEN_POINTS);
+      this.popup(g.x + 0.5, g.y, `+${Math.round(RT.GOLDEN_POINTS * this.diff.mult)}`, '#ffd23f', true);
+      this.addCharge(5, g.x, g.y);
+      this.sound.golden();
+      this.burst(g.x + 0.5, g.y + 0.5, '#ffd23f', 16, true);
+    }
+
+    updateGolden(dt) {
+      if (this.golden) {
+        this.golden.life -= dt;
+        if (this.golden.life <= 0) { this.golden = null; this.goldenTimer = 18 + Math.random() * 12; }
+        return;
+      }
+      this.goldenTimer -= dt;
+      if (this.goldenTimer > 0) return;
+      const L = this.level, r = this.tileOf(this.rabbit);
+      const dist = RT.bfs(L, r.x, r.y, (x, y) => this.rabbitCan(x, y));
+      const cands = [];
+      for (let i = 0; i < dist.length; i++) {
+        if (dist[i] >= 6 && L.grid[i] === T.PATH) cands.push(i);
+      }
+      if (!cands.length) { this.goldenTimer = 5; return; }
+      const k = cands[Math.floor(Math.random() * cands.length)];
+      this.golden = { x: k % L.W, y: (k / L.W) | 0, life: 10 };
+      this.ui.toast('A golden carrot appeared!');
+    }
+
+    openDoor() {
+      this.doorOpen = true;
+      this.sound.door();
+      this.ui.banner('All carrots eaten! The escape door is OPEN — run to the centre!', 'good');
+      const d = this.level.door;
+      this.burst(d.x + 0.5, d.y + 0.5, '#ffd23f', 24, true);
+    }
+
+    // ---------- enemy ----------
+    updateEnemy(dt) {
+      const e = this.enemy;
+      if (e.state === 'lair') {
+        e.timer -= dt;
+        const n = Math.ceil(e.timer);
+        if (n !== e.lastTick) { e.lastTick = n; this.ui.enemyCountdown(Math.max(0, n)); }
+        if (e.timer <= 3 && !e.warned) { e.warned = true; this.sound.growl(); }
+        if (e.timer <= 0) {
+          e.state = 'chase';
+          this.gateOpen = true;
+          this.ui.enemyCountdown(-1);
+          this.ui.banner('BIG MOUTH IS COMING!', 'danger');
+          this.sound.arrive();
+          this.renderer.shake = 10;
+        }
+        return;
+      }
+      if (e.state === 'flying') {
+        e.fly.t += dt / e.fly.dur;
+        if (e.fly.t >= 1) {
+          e.tx = e.fly.tx; e.ty = e.fly.ty; e.p = 0; e.dir = null; e.fly = null;
+          e.state = 'dizzy'; e.timer = 2.5;
+          this.renderer.shake = 6;
+        }
+        return;
+      }
+      if (e.state === 'dizzy') {
+        e.timer -= dt;
+        if (e.timer <= 0) e.state = 'chase';
+        return;
+      }
+      // chase
+      let speed = RT.RABBIT_SPEED * this.enemySpeedMul;
+      if (this.doorOpen) speed *= 1.1;
+      if (this.invis > 0) speed *= 0.85;
+      this.step(e, speed * dt, (en) => this.enemyDecide(en), null);
+    }
+
+    enemyDecide(e) {
+      const L = this.level;
+      const inMaze = e.tx >= L.OX;
+      const opts = DIR_LIST.filter(d => {
+        const nx = e.tx + d.x, ny = e.ty + d.y;
+        if (inMaze && nx < L.OX) return false;
+        return this.enemyTile(nx, ny);
+      });
+      if (!opts.length) { e.dir = null; return; }
+      const rev = RT.opposite(e.dir);
+      const hidden = this.invis > 0;
+      let target = null;
+      if (!hidden) { target = this.tileOf(this.rabbit); e.lastSeen = target; }
+      else if (e.lastSeen && !(e.lastSeen.x === e.tx && e.lastSeen.y === e.ty)) target = e.lastSeen;
+      else e.lastSeen = null;
+
+      let choice = null;
+      const nonRev = opts.filter(d => d !== rev);
+      if (target && !(inMaze && opts.length > 2 && Math.random() < this.diff.wander)) {
+        const dist = RT.bfs(L, target.x, target.y, (x, y) => this.enemyTile(x, y));
+        let best = Infinity;
+        for (const d of opts) {
+          const v = dist[L.key(e.tx + d.x, e.ty + d.y)];
+          if (v >= 0 && v < best) { best = v; choice = d; }
+        }
+      }
+      if (!choice) {
+        const pool = nonRev.length ? nonRev : opts;
+        choice = pool[Math.floor(Math.random() * pool.length)];
+      }
+      e.dir = choice;
+      e.face = choice;
+    }
+
+    checkCollision() {
+      const e = this.enemy;
+      if (e.state !== 'chase') return;
+      if (this.enemyDistance() > 0.72) return;
+      if (this.fighter > 0) this.bounce();
+      else if (this.invis > 0) return;
+      else this.caught();
+    }
+
+    bounce() {
+      const L = this.level, e = this.enemy;
+      const r = this.tileOf(this.rabbit);
+      const dist = RT.bfs(L, r.x, r.y, (x, y) => x >= L.OX && this.level.at(x, y) === T.PATH);
+      let best = -1, bk = L.key(L.cage.x, L.cage.y);
+      for (let i = 0; i < dist.length; i++) if (dist[i] > best) { best = dist[i]; bk = i; }
+      const from = this.posOf(e);
+      e.fly = { fx: from.x, fy: from.y, tx: bk % L.W, ty: (bk / L.W) | 0, t: 0, dur: 0.9 };
+      e.state = 'flying';
+      e.dir = null; e.p = 0;
+      this.fighter = 0;
+      this.bounces++;
+      this.addScore(RT.BOUNCE_POINTS);
+      this.popup(from.x + 0.5, from.y, `POW! +${Math.round(RT.BOUNCE_POINTS * this.diff.mult)}`, '#ff7b54', true);
+      this.burst(from.x + 0.5, from.y + 0.5, '#ffd23f', 20, true);
+      this.sound.bounce();
+      this.renderer.shake = 14;
+      if (navigator.vibrate) try { navigator.vibrate(60); } catch (err) { /* ignore */ }
+    }
+
+    caught() {
+      this.state = 'caught';
+      this.caughtTimer = 1.8;
+      this.lives--;
+      this.sound.caught();
+      this.sound.musicTempo = 1;
+      this.renderer.shake = 16;
+      const p = this.posOf(this.rabbit);
+      this.popup(p.x + 0.5, p.y - 0.3, 'CAUGHT!', '#ff4d5e', true);
+      this.ui.banner(this.lives > 0 ? `Big Mouth caught you! ${this.lives} ${this.lives === 1 ? 'life' : 'lives'} left` : 'Big Mouth caught you!', 'danger');
+      if (navigator.vibrate) try { navigator.vibrate([120, 60, 200]); } catch (err) { /* ignore */ }
+    }
+
+    // ---------- endings ----------
+    escape() {
+      this.state = 'levelclear';
+      const mult = this.diff.mult;
+      const par = this.carrotsTotal * 0.55 + 25;
+      const timeBonus = Math.max(0, Math.round(par - this.levelTime)) * 5;
+      const livesBonus = this.lives * 250;
+      const escapeBonus = 1000;
+      const total = Math.round((escapeBonus + timeBonus + livesBonus) * mult);
+      this.score += total;
+      const best = this.saveBest();
+      this.sound.win();
+      this.sound.stopMusic();
+      this.ui.enemyCountdown(-1);
+      this.ui.showLevelClear({
+        level: this.levelNum, time: this.levelTime, escapeBonus, timeBonus, livesBonus,
+        mult, total, score: this.score, best
+      });
+    }
+
+    nextLevel() {
+      this.levelNum++;
+      this.startLevel();
+      this.sound.startMusic();
+    }
+
+    gameOver() {
+      this.state = 'gameover';
+      const best = this.saveBest();
+      this.sound.stopMusic();
+      this.sound.lose();
+      this.ui.enemyCountdown(-1);
+      this.ui.showGameOver({ score: this.score, level: this.levelNum, carrots: this.totalCarrots, bounces: this.bounces, best });
+    }
+
+    saveBest() {
+      const key = 'rt_best_' + this.diff.key;
+      let prev = 0;
+      try { prev = parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch (e) { /* ignore */ }
+      const isNew = this.score > prev;
+      if (isNew) { try { localStorage.setItem(key, String(this.score)); } catch (e) { /* ignore */ } }
+      return { value: Math.max(prev, this.score), isNew };
+    }
+
+    // ---------- fx ----------
+    addScore(n) { this.score += Math.round(n * this.diff.mult); }
+    popup(x, y, text, color, big) { this.popups.push({ x, y, text, color, life: big ? 1.3 : 0.9, big }); }
+    burst(x, y, color, n, star) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 3;
+        this.particles.push({
+          x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, g: 2,
+          life: 0.7, max: 0.7, size: star ? 0.12 : 0.07, color, star
+        });
+      }
+    }
+  }
+
+  RT.Game = Game;
+})();
+</script>
+<script>
+/* Rabbittor — HUD, screens and messages. */
+(function () {
+  const RT = window.RT;
+  const $ = (id) => document.getElementById(id);
+
+  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+
+  class UI {
+    constructor() {
+      this.cache = {};
+      this.bannerTimer = null;
+      this.toastTimer = null;
+      this.countTimer = null;
+    }
+
+    set(id, prop, value) {
+      const k = id + '.' + prop;
+      if (this.cache[k] === value) return;
+      this.cache[k] = value;
+      const el = $(id);
+      if (!el) return;
+      if (prop === 'text') el.textContent = value;
+      else if (prop === 'html') el.innerHTML = value;
+      else if (prop.startsWith('--')) el.style.setProperty(prop, value);
+      else if (prop === 'class') el.className = value;
+      else if (prop === 'hidden') el.hidden = value;
+      else el.style[prop] = value;
+    }
+
+    hearts(n, max) {
+      let h = '';
+      for (let i = 0; i < max; i++) h += `<span class="heart ${i < n ? '' : 'lost'}">${HEART}</span>`;
+      return h;
+    }
+
+    levelStarted(game) {
+      this.cache = {};
+      this.hideAllScreens();
+      $('hud').hidden = false;
+      $('controls').hidden = false;
+      $('enemyTimer').hidden = true;
+      this.set('levelChip', 'text', `Lv ${game.levelNum} · ${game.diff.name}`);
+    }
+
+    sync(game) {
+      if (!game.diff) return;
+      this.set('lives', 'html', this.hearts(game.lives, game.diff.lives));
+      this.set('score', 'text', game.score.toLocaleString());
+      const L = game.level;
+      const eaten = game.carrotsTotal - L.carrots.size;
+      this.set('carrotCount', 'text', `${eaten} / ${game.carrotsTotal}`);
+      this.set('carrotFill', 'width', (eaten / Math.max(1, game.carrotsTotal) * 100).toFixed(1) + '%');
+      this.set('carrotMeter', 'class', 'carrot-meter' + (game.doorOpen ? ' open' : ''));
+
+      // invisibility button
+      let iState, iPct, iClass;
+      if (game.invis > 0) { iState = `${Math.ceil(game.invis)}s left`; iPct = game.invis / game.diff.invisDur; iClass = 'skill invis active'; }
+      else if (game.invisCd > 0) {
+        const s = Math.ceil(game.invisCd);
+        iState = s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`;
+        iPct = 1 - game.invisCd / RT.INVIS_COOLDOWN; iClass = 'skill invis cooling';
+      } else { iState = 'Ready'; iPct = 1; iClass = 'skill invis ready'; }
+      this.set('invisSub', 'text', iState);
+      this.set('btnInvis', 'class', iClass);
+      this.set('btnInvis', '--pct', (iPct * 100).toFixed(1) + '%');
+
+      // fighter button
+      let fState, fPct, fClass;
+      if (game.fighter > 0) { fState = `${Math.ceil(game.fighter)}s left`; fPct = game.fighter / game.diff.fighterDur; fClass = 'skill fighter active'; }
+      else if (game.charges > 0) { fState = 'Ready'; fPct = 1; fClass = 'skill fighter ready'; }
+      else { fState = `${game.chargeProgress}/${RT.FIGHTER_COST}`; fPct = game.chargeProgress / RT.FIGHTER_COST; fClass = 'skill fighter cooling'; }
+      this.set('fighterSub', 'text', fState);
+      this.set('btnFighter', 'class', fClass);
+      this.set('btnFighter', '--pct', (fPct * 100).toFixed(1) + '%');
+      this.set('fighterBadge', 'text', String(game.charges));
+      this.set('fighterBadge', 'hidden', game.charges <= 0);
+    }
+
+    enemyCountdown(n) {
+      const el = $('enemyTimer');
+      if (n < 0) { el.hidden = true; return; }
+      el.hidden = false;
+      el.classList.toggle('soon', n <= 3);
+      $('enemyTimerNum').textContent = n;
+    }
+
+    banner(text, kind) {
+      const el = $('banner');
+      el.textContent = text;
+      el.className = 'banner ' + (kind || '');
+      el.hidden = false;
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+      clearTimeout(this.bannerTimer);
+      this.bannerTimer = setTimeout(() => { el.hidden = true; }, 2800);
+    }
+
+    toast(text) {
+      const el = $('toast');
+      el.textContent = text;
+      el.hidden = false;
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+    }
+
+    countdown(text, go) {
+      const el = $('countdown');
+      el.textContent = text;
+      el.className = 'countdown show' + (go ? ' go' : '');
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+      clearTimeout(this.countTimer);
+      this.countTimer = setTimeout(() => { el.className = 'countdown'; }, go ? 700 : 950);
+    }
+
+    hideAllScreens() {
+      document.querySelectorAll('.screen').forEach(s => { s.hidden = true; });
+    }
+    showScreen(id) {
+      this.hideAllScreens();
+      $(id).hidden = false;
+      const first = $(id).querySelector('[data-autofocus]') || $(id).querySelector('button');
+      if (first) setTimeout(() => first.focus({ preventScroll: true }), 30);
+    }
+
+    showTitle() {
+      this.renderModes();
+      this.showScreen('scrTitle');
+      $('hud').hidden = true;
+      $('controls').hidden = true;
+    }
+
+    renderModes() {
+      const wrap = $('modes');
+      wrap.innerHTML = '';
+      RT.DIFF_ORDER.forEach((k) => {
+        const d = RT.DIFFICULTIES[k];
+        let best = 0;
+        try { best = parseInt(localStorage.getItem('rt_best_' + k) || '0', 10) || 0; } catch (e) { /* ignore */ }
+        const b = document.createElement('button');
+        b.className = 'mode mode-' + k;
+        b.dataset.mode = k;
+        b.innerHTML = `
+          <span class="mode-name">${d.name}</span>
+          <span class="mode-hearts" aria-label="${d.lives} lives">${this.hearts(d.lives, d.lives)}</span>
+          <span class="mode-info">${d.mapLabel} · score ×${d.mult}</span>
+          <span class="mode-blurb">${d.blurb}</span>
+          <span class="mode-best">${best ? 'Best ' + best.toLocaleString() : 'No score yet'}</span>`;
+        wrap.appendChild(b);
+      });
+    }
+
+    showPause(on) {
+      if (on) this.showScreen('scrPause'); else $('scrPause').hidden = true;
+    }
+
+    showLevelClear(d) {
+      const mins = Math.floor(d.time / 60), secs = Math.floor(d.time % 60);
+      $('lcTitle').textContent = `Level ${d.level} escaped!`;
+      $('lcRows').innerHTML = `
+        <div><span>Escape bonus</span><b>${d.escapeBonus.toLocaleString()}</b></div>
+        <div><span>Speed bonus (${mins}:${String(secs).padStart(2, '0')})</span><b>${d.timeBonus.toLocaleString()}</b></div>
+        <div><span>Lives bonus</span><b>${d.livesBonus.toLocaleString()}</b></div>
+        <div><span>Difficulty</span><b>×${d.mult}</b></div>
+        <div class="total"><span>Level total</span><b>+${d.total.toLocaleString()}</b></div>
+        <div class="total"><span>Score</span><b>${d.score.toLocaleString()}</b></div>`;
+      $('lcBest').hidden = !d.best.isNew;
+      setTimeout(() => this.showScreen('scrLevel'), 500);
+    }
+
+    showGameOver(d) {
+      $('goScore').textContent = d.score.toLocaleString();
+      $('goStats').innerHTML = `
+        <div><span>Reached level</span><b>${d.level}</b></div>
+        <div><span>Carrots eaten</span><b>${d.carrots.toLocaleString()}</b></div>
+        <div><span>Big Mouth bounced</span><b>${d.bounces}</b></div>
+        <div><span>Best score</span><b>${d.best.value.toLocaleString()}</b></div>`;
+      $('goBest').hidden = !d.best.isNew;
+      setTimeout(() => this.showScreen('scrOver'), 400);
+    }
+  }
+
+  RT.UI = UI;
+})();
+</script>
+<script>
+/* Rabbittor — boot, input and main loop. */
+(function () {
+  const RT = window.RT;
+  const $ = (id) => document.getElementById(id);
+
+  const canvas = $('game');
+  const renderer = new RT.Renderer(canvas);
+  const sound = new RT.Sound();
+  const ui = new RT.UI();
+  const game = new RT.Game(renderer, sound, ui);
+  RT.game = game; // handy for debugging in the console
+
+  let lastMode = 'normal';
+
+  // ---------- screens ----------
+  function startRun(mode) {
+    lastMode = mode;
+    sound.unlock();
+    game.newRun(mode);
+    sound.startMusic();
+  }
+  function toMenu() {
+    game.state = 'title';
+    sound.stopMusic();
+    ui.showTitle();
+  }
+
+  $('modes').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-mode]');
+    if (!b) return;
+    sound.unlock(); sound.click();
+    startRun(b.dataset.mode);
+  });
+  $('btnHelp').addEventListener('click', () => { sound.unlock(); sound.click(); ui.showScreen('scrHelp'); });
+  $('btnHelpBack').addEventListener('click', () => { sound.click(); ui.showTitle(); });
+  $('btnPause').addEventListener('click', () => { sound.unlock(); game.togglePause(); });
+  $('btnResume').addEventListener('click', () => game.resume());
+  $('btnRestart').addEventListener('click', () => { ui.showPause(false); startRun(lastMode); });
+  $('btnQuit').addEventListener('click', toMenu);
+  $('btnNext').addEventListener('click', () => { sound.click(); game.nextLevel(); });
+  $('btnLcMenu').addEventListener('click', toMenu);
+  $('btnAgain').addEventListener('click', () => { sound.click(); startRun(lastMode); });
+  $('btnGoMenu').addEventListener('click', toMenu);
+
+  function syncToggles() {
+    document.querySelectorAll('[data-toggle="sfx"]').forEach(b => { b.setAttribute('aria-pressed', sound.sfxOn); b.querySelector('b').textContent = sound.sfxOn ? 'On' : 'Off'; });
+    document.querySelectorAll('[data-toggle="music"]').forEach(b => { b.setAttribute('aria-pressed', sound.musicOn); b.querySelector('b').textContent = sound.musicOn ? 'On' : 'Off'; });
+  }
+  document.addEventListener('click', (ev) => {
+    const t = ev.target.closest('[data-toggle]');
+    if (!t) return;
+    sound.unlock();
+    if (t.dataset.toggle === 'sfx') sound.setSfx(!sound.sfxOn);
+    else {
+      sound.setMusic(!sound.musicOn);
+      if (sound.musicOn && (game.state === 'play' || game.state === 'intro')) sound.startMusic(); else sound.stopMusic();
+    }
+    syncToggles();
+  });
+  syncToggles();
+
+  // ---------- skills ----------
+  const skillBtn = (id, fn) => {
+    const el = $(id);
+    el.addEventListener('pointerdown', (ev) => { ev.preventDefault(); sound.unlock(); fn(); });
+    el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') fn(); });
+  };
+  skillBtn('btnInvis', () => game.useInvisibility());
+  skillBtn('btnFighter', () => game.useFighter());
+
+  // ---------- keyboard ----------
+  const KEYS = {
+    ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
+    ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right'
+  };
+  window.addEventListener('keydown', (ev) => {
+    const playing = game.state === 'play' || game.state === 'intro';
+    if (KEYS[ev.code] && playing) { ev.preventDefault(); game.setDirection(KEYS[ev.code]); return; }
+    if (!playing && game.state !== 'paused') return;
+    switch (ev.code) {
+      case 'Space': case 'KeyE': case 'KeyI':
+        ev.preventDefault(); sound.unlock(); game.useInvisibility(); break;
+      case 'KeyF': case 'ShiftLeft': case 'ShiftRight': case 'KeyQ':
+        ev.preventDefault(); sound.unlock(); game.useFighter(); break;
+      case 'KeyP': case 'Escape':
+        ev.preventDefault(); game.togglePause(); break;
+    }
+  });
+
+  // ---------- touch: swipe anywhere on the maze + d-pad ----------
+  const stage = $('stage');
+  let sw = null;
+  stage.addEventListener('pointerdown', (ev) => {
+    sound.unlock();
+    sw = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
+  });
+  stage.addEventListener('pointermove', (ev) => {
+    if (!sw || ev.pointerId !== sw.id) return;
+    const dx = ev.clientX - sw.x, dy = ev.clientY - sw.y;
+    if (Math.hypot(dx, dy) < 18) return;
+    game.setDirection(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    sw.x = ev.clientX; sw.y = ev.clientY;
+  });
+  const endSwipe = () => { sw = null; };
+  stage.addEventListener('pointerup', endSwipe);
+  stage.addEventListener('pointercancel', endSwipe);
+
+  document.querySelectorAll('[data-dir]').forEach((b) => {
+    b.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); sound.unlock();
+      game.setDirection(b.dataset.dir);
+      b.classList.add('pressed');
+      setTimeout(() => b.classList.remove('pressed'), 140);
+    });
+  });
+
+  // ---------- window events ----------
+  const onResize = () => { if (game.level) renderer.resize(); };
+  window.addEventListener('resize', onResize);
+  if (window.ResizeObserver) new ResizeObserver(onResize).observe(stage);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });
+
+  // ---------- title art: rabbit running from Big Mouth ----------
+  const art = $('titleArt');
+  const actx = art.getContext('2d');
+  const fake = { state: 'play', invis: 0, fighter: 0, caughtTimer: 0 };
+  function drawTitle(t) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = art.clientWidth, h = art.clientHeight;
+    if (!w || !h) return;
+    if (art.width !== Math.round(w * dpr)) { art.width = Math.round(w * dpr); art.height = Math.round(h * dpr); }
+    actx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    actx.clearRect(0, 0, w, h);
+    const s = Math.min(h * 0.62, 72);
+    const cycle = (t * 0.12) % 1;
+    const span = w + s * 4;
+    const rx = -s + cycle * span, ex = rx - s * 2.1;
+    const y = h * 0.58;
+    // carrots on the trail
+    for (let i = 0; i < 8; i++) {
+      const cx = ((i + 0.5) / 8) * w;
+      if (cx > rx) {
+        actx.save(); actx.translate(cx, y + s * 0.15); actx.rotate(-0.6);
+        actx.fillStyle = '#6fdc6a'; actx.fillRect(-2, -s * 0.24, 4, s * 0.1);
+        actx.fillStyle = '#ff8a1f';
+        actx.beginPath(); actx.moveTo(-s * 0.06, -s * 0.14); actx.lineTo(s * 0.06, -s * 0.14); actx.lineTo(0, s * 0.14); actx.fill();
+        actx.restore();
+      }
+    }
+    renderer.drawRabbit(actx, rx, y, s, { dir: RT.DIR.right, face: RT.DIR.right }, t, fake);
+    renderer.drawBigMouth(actx, ex, y, s * 1.1, { face: RT.DIR.right, state: 'chase' }, t, fake);
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    game.update(dt);
+    if (game.state === 'title' || !game.level) {
+      if (!$('scrTitle').hidden) drawTitle(now / 1000);
+    } else {
+      renderer.draw(game);
+      ui.sync(game);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // credits
+  $('credit').textContent = `Story, map and Big Mouth invented by ${RT.CREDITS.storyBy}.`;
+
+  ui.showTitle();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
